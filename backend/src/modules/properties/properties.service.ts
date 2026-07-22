@@ -18,10 +18,16 @@ export const getPropertyById = async (id: number | string, locale: string = 'es'
   
   const property = rows[0] as any;
   
-  property.photos = property.photos ? JSON.parse(property.photos) : [];
-  property.videos = property.videos ? JSON.parse(property.videos) : [];
-  property.amenities = property.amenities ? JSON.parse(property.amenities) : [];
-  property.translations = property.translations ? JSON.parse(property.translations) : [];
+  const safeJsonParse = (val: any, fallback: any[] = []) => {
+    if (!val) return fallback;
+    if (typeof val === 'object') return val; // already parsed by mysql2
+    try { return JSON.parse(val); } catch { return fallback; }
+  };
+
+  property.photos = safeJsonParse(property.photos);
+  property.videos = safeJsonParse(property.videos);
+  property.amenities = safeJsonParse(property.amenities);
+  property.translations = safeJsonParse(property.translations);
   
   const translation = property.translations.find((t: any) => t.locale === locale);
   if (translation) {

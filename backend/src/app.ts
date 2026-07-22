@@ -18,6 +18,7 @@ import icalRoutes from './modules/ical/ical.routes.js';
 import exchangeRateRoutes from './modules/currency/exchange-rate.routes.js';
 import favoritesRoutes from './modules/properties/favorites.routes.js';
 import { getQueueDashboard } from './modules/queue/queue.service.js';
+import { getCities } from './modules/search/search.controller.js';
 
 const app = express();
 
@@ -63,6 +64,8 @@ if (config.nodeEnv === 'development') {
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.get('/api/v1/cities', getCities);
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', usersRoutes);

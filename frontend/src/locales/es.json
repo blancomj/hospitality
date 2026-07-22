@@ -209,6 +209,8 @@
     "title": "Mis Favoritos",
     "saved": "propiedad guardada",
     "savedPlural": "propiedades guardadas",
+    "savedCount": "propiedad guardada",
+    "savedCountPlural": "propiedades guardadas",
     "empty": "Sin favoritos",
     "emptyDescription": "Guarda propiedades que te gusten para encontrarlas fácilmente después.",
     "explore": "Explorar propiedades"

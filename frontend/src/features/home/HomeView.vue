@@ -196,12 +196,12 @@ const cities = [
   {
     name: 'Medellin',
     count: 0,
-    image: 'https://images.unsplash.com/photo-1568522440025-9b710e6a1e5e?w=800&q=80&fit=crop',
+    image: 'https://images.pexels.com/photos/1436752/pexels-photo-1436752.jpeg?auto=compress&cs=tinysrgb&w=800&h=500&fit=crop',
   },
   {
     name: 'Cartagena',
     count: 0,
-    image: 'https://images.unsplash.com/photo-1583996053284-3ca0882e4562?w=800&q=80&fit=crop',
+    image: 'https://images.pexels.com/photos/18047915/pexels-photo-18047915.jpeg?auto=compress&cs=tinysrgb&w=800&h=500&fit=crop',
   },
 ]
 
@@ -278,9 +278,10 @@ const fetchFeatured = async () => {
   isLoadingProperties.value = true
   try {
     const response = await api.get('/search', { params: { limit: 6 } })
-    featuredProperties.value = response.data.properties
+    featuredProperties.value = response.data.properties || []
   } catch (error) {
-    console.error('Error fetching featured properties:', error)
+    console.warn('Error fetching featured properties — DB may be unavailable')
+    featuredProperties.value = []
   } finally {
     isLoadingProperties.value = false
   }

@@ -1,38 +1,33 @@
 -- ============================================
 -- Migración 012: Vista v_search_properties
 -- CONSTRUESCALA Hospitality
--- Vista optimizada para búsqueda de propiedades
 -- ============================================
 
 DROP VIEW IF EXISTS v_search_properties;
 
 CREATE VIEW v_search_properties AS
-SELECT 
+SELECT
   p.id,
   p.host_id,
   p.title,
+  p.description,
   p.city,
-  p.neighborhood,
-  p.property_type,
-  p.max_guests,
-  p.bedrooms,
-  p.beds,
-  p.bathrooms,
-  p.area_m2,
-  p.base_price_per_night,
-  p.status,
-  p.avg_rating,
-  p.review_count,
+  p.country,
+  p.address,
   p.latitude,
   p.longitude,
-  p.show_exact_location,
+  p.max_guests,
+  p.bedrooms,
+  p.bathrooms,
+  p.base_price_per_night,
+  p.cancellation_policy,
+  p.status,
+  p.created_at,
+  p.updated_at,
   u.full_name AS host_name,
   u.avatar_url AS host_avatar,
-  hp.commission_rate,
-  -- Foto principal (primera foto por sort_order)
-  (SELECT url FROM property_photos pp WHERE pp.property_id = p.id ORDER BY pp.sort_order ASC LIMIT 1) AS main_photo_url,
-  (SELECT thumbnail_url FROM property_photos pp WHERE pp.property_id = p.id ORDER BY pp.sort_order ASC LIMIT 1) AS main_thumbnail_url
+  (SELECT image_url FROM property_photos pp WHERE pp.property_id = p.id AND pp.is_primary = 1 LIMIT 1) AS main_photo_url,
+  (SELECT image_url FROM property_photos pp WHERE pp.property_id = p.id ORDER BY pp.is_primary DESC LIMIT 1) AS main_thumbnail_url
 FROM properties p
 JOIN users u ON p.host_id = u.id
-LEFT JOIN host_profiles hp ON p.host_id = hp.user_id
 WHERE p.status = 'published';

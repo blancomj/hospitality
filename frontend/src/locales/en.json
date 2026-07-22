@@ -209,6 +209,8 @@
     "title": "My Favorites",
     "saved": "property saved",
     "savedPlural": "properties saved",
+    "savedCount": "property saved",
+    "savedCountPlural": "properties saved",
     "empty": "No favorites",
     "emptyDescription": "Save properties you like to find them easily later.",
     "explore": "Explore properties"
