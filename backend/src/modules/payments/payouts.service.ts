@@ -1,4 +1,5 @@
 import pool from '../../db/connection.js';
+import { sendPayoutNotificationEmail } from '../notifications/notifications.service.js';
 
 interface PayoutBatchItem {
   payout_id: number;
@@ -58,6 +59,19 @@ export async function markPayoutPaid(
   payoutId: number,
   wompiReference: string
 ): Promise<void> {
+  // Fetch payout details before updating
+  const [payoutRows] = await pool.execute(
+    `SELECT p.*, u.full_name AS host_name, u.email AS host_email,
+            pr.title AS property_title, b.start_date, b.end_date
+     FROM payouts p
+     JOIN users u ON p.host_id = u.id
+     JOIN bookings b ON p.booking_id = b.id
+     JOIN properties pr ON b.property_id = pr.id
+     WHERE p.id = ?`,
+    [payoutId]
+  );
+  const payout = (payoutRows as any[])[0];
+
   await pool.execute(
     `UPDATE payouts 
      SET status = 'paid', 
@@ -66,6 +80,22 @@ export async function markPayoutPaid(
      WHERE id = ?`,
     [wompiReference, payoutId]
   );
+
+  // Send payout notification email
+  if (payout) {
+    try {
+      await sendPayoutNotificationEmail({
+        hostEmail: payout.host_email,
+        hostName: payout.host_name,
+        netAmount: payout.net_amount,
+        wompiReference,
+        propertyTitle: payout.property_title,
+        bookingId: payout.booking_id,
+      });
+    } catch {
+      // Email failure must not block payout processing
+    }
+  }
 }
 
 export async function markPayoutFailed(

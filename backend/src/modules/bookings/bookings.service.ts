@@ -1,5 +1,6 @@
 import pool from '../../db/connection.js';
 import { BookingDetailView } from '../../types/index.js';
+import { sendBookingConfirmationEmails } from '../notifications/notifications.service.js';
 
 export interface CreateBookingData {
   propertyId: number;
@@ -22,7 +23,33 @@ export const createBooking = async (data: CreateBookingData): Promise<any> => {
   );
 
   const result = rows as any;
-  return result[0][0];
+  const booking = result[0][0];
+
+  // Fetch full booking detail for email notification
+  try {
+    const [detailRows] = await pool.execute<BookingDetailView[]>(
+      'SELECT * FROM v_bookings_detail WHERE booking_id = ?',
+      [booking.booking_id || booking.id]
+    );
+    const detail = detailRows[0];
+    if (detail) {
+      await sendBookingConfirmationEmails({
+        guestEmail: detail.guest_email,
+        guestName: detail.guest_name,
+        hostEmail: detail.host_email,
+        hostName: detail.host_name,
+        propertyTitle: detail.property_title,
+        checkIn: detail.start_date,
+        checkOut: detail.end_date,
+        totalAmount: detail.total_price,
+        bookingId: detail.booking_id,
+      });
+    }
+  } catch {
+    // Email failure must not block booking creation
+  }
+
+  return booking;
 };
 
 export const cancelBooking = async (

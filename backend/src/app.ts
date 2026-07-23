@@ -73,7 +73,8 @@ app.use('/api/v1/webhooks/brevo', express.raw({ type: 'application/json' }), asy
   try {
     const signature = req.headers['x-brevo-signature'] as string || '';
     const timestamp = req.headers['x-brevo-timestamp'] as string || '';
-    const result = await processBrevoWebhook(signature, timestamp, req.body);
+    const rawBody = req.body.toString('utf8');
+    const result = await processBrevoWebhook(signature, timestamp, rawBody);
     if (result.success) {
       res.json({ status: 'ok' });
     } else {

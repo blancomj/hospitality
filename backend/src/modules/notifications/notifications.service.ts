@@ -1,5 +1,24 @@
+import { createHmac } from 'node:crypto';
 import pool from '../../db/connection.js';
 import { sendTransactionalEmail, EMAIL_TEMPLATES } from './brevo.client.js';
+
+const BREVO_WEBHOOK_KEY = process.env.BREVO_WEBHOOK_KEY || '';
+
+function verifyBrevoSignature(
+  signature: string,
+  timestamp: string,
+  body: string
+): boolean {
+  if (!BREVO_WEBHOOK_KEY) {
+    console.warn('BREVO_WEBHOOK_KEY not configured, skipping signature verification');
+    return true;
+  }
+  if (!signature || !timestamp) return false;
+  const expected = createHmac('sha256', BREVO_WEBHOOK_KEY)
+    .update(timestamp + body)
+    .digest('base64');
+  return expected === signature;
+}
 
 interface BookingEmailData {
   guestEmail: string;
@@ -100,9 +119,19 @@ export async function sendPayoutNotificationEmail(
 export async function processBrevoWebhook(
   signature: string,
   timestamp: string,
-  payload: object
+  rawBody: string
 ): Promise<{ success: boolean; message: string }> {
-  const event = payload as any;
+  if (!verifyBrevoSignature(signature, timestamp, rawBody)) {
+    return { success: false, message: 'Invalid signature' };
+  }
+
+  let event: any;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return { success: false, message: 'Invalid JSON' };
+  }
+
   const messageId = event['Message-Id'];
   const status = event.event;
 
@@ -110,7 +139,6 @@ export async function processBrevoWebhook(
     return { success: false, message: 'Missing required fields' };
   }
 
-  // Update email log status
   try {
     await pool.execute(
       `UPDATE email_logs 
