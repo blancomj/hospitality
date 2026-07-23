@@ -245,7 +245,7 @@
                 :key="foto.id"
                 class="relative aspect-[4/3] rounded-xl overflow-hidden bg-cream-100 group"
               >
-                <img :src="foto.thumbnail_url || foto.url" :alt="`Foto ${i + 1}`" class="w-full h-full object-cover" loading="lazy" />
+                <img :src="mediaUrl(foto.thumbnail_url || foto.url)" :alt="`Foto ${i + 1}`" class="w-full h-full object-cover" loading="lazy" />
 
                 <span
                   v-if="i === 0"
@@ -388,6 +388,7 @@ import PropertyAmenitiesTab from './PropertyAmenitiesTab.vue'
 import PropertyVideosTab from './PropertyVideosTab.vue'
 import PropertyAvailabilityTab from './PropertyAvailabilityTab.vue'
 import PropertyIcalTab from './PropertyIcalTab.vue'
+import { mediaUrl } from '@/lib/media'
 
 const { t } = useI18n()
 const route = useRoute()

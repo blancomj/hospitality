@@ -40,7 +40,7 @@
           <div class="h-48 bg-gray-100 relative">
             <img
               v-if="property.main_photo_url"
-              :src="property.main_photo_url"
+              :src="mediaUrl(property.main_photo_url)"
               :alt="property.title"
               class="w-full h-full object-cover"
             />
@@ -122,6 +122,7 @@ import { useToast } from 'vue-toastification'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import { mediaUrl } from '@/lib/media'
 
 const { t } = useI18n()
 const route = useRoute()

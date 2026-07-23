@@ -6,7 +6,7 @@
       <div class="col-span-2 row-span-2 relative cursor-pointer" @click="openLightbox(0)">
         <img 
           v-if="photos[0]"
-          :src="photos[0].thumbnail_url || photos[0].url"
+          :src="mediaUrl(photos[0].thumbnail_url || photos[0].url)"
           :alt="alt"
           class="w-full h-full object-cover hover:brightness-95 transition-all"
           loading="lazy"
@@ -26,7 +26,7 @@
         @click="openLightbox(index + 1)"
       >
         <img 
-          :src="photo.thumbnail_url || photo.url"
+          :src="mediaUrl(photo.thumbnail_url || photo.url)"
           :alt="`${alt} ${index + 2}`"
           class="w-full h-full object-cover hover:brightness-95 transition-all"
           loading="lazy"
@@ -72,7 +72,7 @@
 
           <video
             v-else-if="activeVideoId === video.id && video.source === 'upload'"
-            :src="video.url"
+            :src="mediaUrl(video.url)"
             class="w-full h-full object-contain bg-black"
             controls
             autoplay
@@ -126,7 +126,7 @@
       </button>
       
       <img 
-        :src="currentPhoto?.url"
+        :src="mediaUrl(currentPhoto?.url)"
         :alt="alt"
         class="max-w-[90vw] max-h-[90vh] object-contain"
         @click.stop
@@ -162,6 +162,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { PropertyPhoto, PropertyVideo } from '@/types'
+import { mediaUrl } from '@/lib/media'
 
 interface Props {
   photos?: PropertyPhoto[]

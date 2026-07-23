@@ -4,7 +4,7 @@
     <div class="relative aspect-[4/3] overflow-hidden">
       <img 
         v-if="property.main_photo_url || property.main_thumbnail_url"
-        :src="(property.main_thumbnail_url || property.main_photo_url) ?? ''"
+        :src="mediaUrl(property.main_thumbnail_url || property.main_photo_url)"
         :alt="property.title"
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         loading="lazy"
@@ -75,6 +75,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCurrency } from '@/composables/useCurrency'
 import { Property } from '@/types'
+import { mediaUrl } from '@/lib/media'
 
 interface Props {
   property: Property
