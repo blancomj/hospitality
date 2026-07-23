@@ -45,19 +45,7 @@ export async function webhookController(
   res: Response
 ): Promise<void> {
   try {
-    const signature = Array.isArray(req.headers['x-wompi-signature']) 
-      ? req.headers['x-wompi-signature'][0] 
-      : req.headers['x-wompi-signature'] || '';
-    const timestamp = Array.isArray(req.headers['x-wompi-timestamp'])
-      ? req.headers['x-wompi-timestamp'][0]
-      : req.headers['x-wompi-timestamp'] || '';
-
-    if (!signature || !timestamp) {
-      res.status(400).json({ error: 'Missing required headers' });
-      return;
-    }
-
-    const result = await processWebhook(signature, timestamp, req.body);
+    const result = await processWebhook(req.body);
 
     if (result.success) {
       res.json({ status: 'ok' });
@@ -83,7 +71,6 @@ export async function refundBookingController(
       return;
     }
 
-    // Solo admin o sistema pueden reembolsar
     if (userRole !== 'admin') {
       res.status(403).json({ error: 'Solo administradores pueden procesar reembolsos' });
       return;

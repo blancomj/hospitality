@@ -1,13 +1,19 @@
-# Firebase / GCP service account keys
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
+# ============================================
+# Credenciales — NUNCA versionar
+# ============================================
+*serviceAccount*.json
+*service-account*.json
+*firebase-adminsdk*.json
+*credentials*.json
+*.pem
+*.key
+*.p12
 
 # Environment files
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Dependencies
 node_modules/
@@ -16,8 +22,18 @@ node_modules/
 dist/
 build/
 
+# Archivos subidos por usuarios (fotos y videos de propiedades)
+uploads/
+!uploads/.gitkeep
+
 # Logs
 *.log
+npm-debug.log*
+logs/
+
+# Testing
+coverage/
+.vitest/
 
 # OS files
 .DS_Store
@@ -26,3 +42,4 @@ Thumbs.db
 # IDE files
 .vscode/
 .idea/
+*.swp

@@ -53,42 +53,64 @@
     <!-- Videos integrados -->
     <div v-if="videos && videos.length > 0" class="mt-4">
       <h3 class="text-lg font-semibold text-gray-900 mb-3">Videos</h3>
-      <div class="grid grid-cols-2 gap-4">
-        <div 
-          v-for="video in videos" 
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          v-for="video in videos"
           :key="video.id"
-          class="relative aspect-video rounded-xl overflow-hidden cursor-pointer bg-gray-900"
-          @click="playVideo(video)"
+          class="relative aspect-video rounded-xl overflow-hidden bg-gray-900"
         >
-          <!-- Thumbnail o embed -->
-          <iframe 
-            v-if="video.source !== 'upload'"
-            :src="getEmbedUrl(video)"
+          <iframe
+            v-if="activeVideoId === video.id && video.source !== 'upload'"
+            :src="getEmbedUrl(video, true)"
             class="w-full h-full"
             frameborder="0"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
           />
-          <img 
-            v-else
-            :src="video.thumbnail_url ?? ''"
-            :alt="`Video ${video.id}`"
-            class="w-full h-full object-cover"
+
+          <video
+            v-else-if="activeVideoId === video.id && video.source === 'upload'"
+            :src="video.url"
+            class="w-full h-full object-contain bg-black"
+            controls
+            autoplay
+            preload="metadata"
           />
-          
-          <!-- Badge de play -->
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
-              <svg class="w-6 h-6 text-gray-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-          </div>
+
+          <!-- Fachada: miniatura + botón de reproducción -->
+          <button
+            v-else
+            type="button"
+            class="absolute inset-0 w-full h-full group focus-visible:ring-2 focus-visible:ring-white"
+            :aria-label="`Reproducir video de ${alt}`"
+            @click="playVideo(video)"
+          >
+            <img
+              v-if="getPosterUrl(video)"
+              :src="getPosterUrl(video)!"
+              :alt="`Vista previa del video de ${alt}`"
+              class="w-full h-full object-cover"
+              loading="lazy"
+            />
+            <div v-else class="w-full h-full bg-gradient-to-br from-primary-700 to-primary-900" />
+
+            <span class="absolute inset-0 flex items-center justify-center">
+              <span
+                class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg transition-transform duration-150 group-hover:scale-110"
+              >
+                <svg class="w-7 h-7 text-gray-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
+            </span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Lightbox (simplificado - se puede mejorar con Swiper) -->
+    <!-- Lightbox -->
     <div 
       v-if="lightboxOpen" 
       class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
@@ -110,7 +132,6 @@
         @click.stop
       />
 
-      <!-- Navegación -->
       <button 
         v-if="currentPhotoIndex > 0"
         class="absolute left-4 text-white w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
@@ -131,7 +152,6 @@
         </svg>
       </button>
 
-      <!-- Contador -->
       <div class="absolute bottom-4 text-white text-sm">
         {{ currentPhotoIndex + 1 }} / {{ photos.length }}
       </div>
@@ -157,6 +177,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const lightboxOpen = ref(false)
 const currentPhotoIndex = ref(0)
+const activeVideoId = ref<number | string | null>(null)
 
 const secondaryPhotos = computed(() => {
   return props.photos.slice(1, 5)
@@ -189,21 +210,35 @@ const nextPhoto = () => {
   }
 }
 
-const getEmbedUrl = (video: PropertyVideo): string => {
+const getYouTubeId = (url: string): string | null =>
+  url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|watch\?v=))([\w-]{11})/)?.[1] ?? null
+
+const getVimeoId = (url: string): string | null =>
+  url.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1] ?? null
+
+const getEmbedUrl = (video: PropertyVideo, autoplay = false): string => {
+  const auto = autoplay ? '?autoplay=1' : ''
   if (video.source === 'youtube') {
-    const videoId = video.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=))([^&?#]+)/)?.[1]
-    return `https://www.youtube.com/embed/${videoId}`
+    const id = getYouTubeId(video.url)
+    return id ? `https://www.youtube-nocookie.com/embed/${id}${auto}` : ''
   }
   if (video.source === 'vimeo') {
-    const videoId = video.url.match(/vimeo\.com\/(\d+)/)?.[1]
-    return `https://player.vimeo.com/video/${videoId}`
+    const id = getVimeoId(video.url)
+    return id ? `https://player.vimeo.com/video/${id}${auto}` : ''
   }
   return video.url
 }
 
-const playVideo = (video: PropertyVideo) => {
-  if (video.source === 'upload') {
-    window.open(video.url, '_blank')
+const getPosterUrl = (video: PropertyVideo): string | null => {
+  if (video.thumbnail_url) return video.thumbnail_url
+  if (video.source === 'youtube') {
+    const id = getYouTubeId(video.url)
+    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
   }
+  return null
+}
+
+const playVideo = (video: PropertyVideo) => {
+  activeVideoId.value = video.id
 }
 </script>

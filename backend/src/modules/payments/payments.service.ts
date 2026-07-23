@@ -1,5 +1,5 @@
 import pool from '../../db/connection.js';
-import { WompiClient } from './wompi.client.js';
+import { WompiClient, WompiEvent } from './wompi.client.js';
 
 interface PaymentIntentResult {
   payment_id: number;
@@ -65,30 +65,30 @@ export async function processRefund(
 }
 
 export async function processWebhook(
-  signature: string,
-  timestamp: string,
-  payload: object
+  rawBody: Buffer | string
 ): Promise<{ success: boolean; message: string }> {
   const wompiClient = new WompiClient();
-  const payloadString = JSON.stringify(payload);
 
-  // Verificar firma
-  if (!wompiClient.verifyWebhookSignature(signature, timestamp, payloadString)) {
+  let event: WompiEvent;
+  try {
+    const raw = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody;
+    event = JSON.parse(raw) as WompiEvent;
+  } catch {
+    return { success: false, message: 'Invalid JSON payload' };
+  }
+
+  if (!wompiClient.verifyEventSignature(event)) {
     return { success: false, message: 'Invalid signature' };
   }
 
-  const event = payload as any;
   const transactionId = event.data?.transaction?.id;
-
   if (!transactionId) {
     return { success: false, message: 'No transaction ID' };
   }
 
-  // Obtener transacción de Wompi
   const transaction = await wompiClient.getTransaction(transactionId);
   const reference = transaction.reference;
 
-  // Extraer booking_id de la referencia (formato: CS-{booking_id}-{timestamp})
   const match = reference.match(/^CS-(\d+)-/);
   if (!match) {
     return { success: false, message: 'Invalid reference format' };
@@ -96,13 +96,21 @@ export async function processWebhook(
 
   const bookingId = parseInt(match[1], 10);
 
-  // Confirmar pago si está aprobado
+  // Idempotency check
+  const [existing] = await pool.execute(
+    'SELECT id FROM payments WHERE wompi_transaction_id = ? AND status = ? LIMIT 1',
+    [transactionId, 'approved']
+  );
+  if ((existing as any[]).length > 0) {
+    return { success: true, message: 'Payment already processed (idempotent)' };
+  }
+
   if (transaction.status === 'APPROVED') {
     await confirmPayment(
       bookingId,
       transactionId,
       transaction.payment_method_type,
-      payload
+      event
     );
     return { success: true, message: 'Payment confirmed' };
   }
@@ -116,7 +124,6 @@ export async function refundBooking(
 ): Promise<{ refundAmount: number; wompiRefundId: string }> {
   const wompiClient = new WompiClient();
 
-  // Obtener transacción original
   const [paymentRows] = await pool.execute(
     'SELECT wompi_transaction_id FROM payments WHERE booking_id = ? AND status = ? LIMIT 1',
     [bookingId, 'approved']
@@ -129,11 +136,9 @@ export async function refundBooking(
 
   const transactionId = payments[0].wompi_transaction_id;
 
-  // Crear reembolso en Wompi
   const amountInCents = Math.round(refundAmount * 100);
   const refundResponse = await wompiClient.createRefund(transactionId, amountInCents);
 
-  // Actualizar estados en BD
   await processRefund(bookingId, refundAmount);
 
   return {

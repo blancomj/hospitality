@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth.middleware.js';
+import { requireRole } from '../../middleware/requireRole.js';
+import { requireCronSecret } from '../../middleware/requireCronSecret.js';
 import {
   exportIcalController,
   getIcalLinksController,
@@ -10,19 +12,12 @@ import {
 
 const router = Router();
 
-// GET /properties/:id/ical/:token.ics - Exportar calendario iCal (público)
 router.get('/properties/:id/ical/:token.ics', exportIcalController);
 
-// GET /properties/:id/ical-links - Listar enlaces iCal importados
-router.get('/properties/:id/ical-links', authenticate, getIcalLinksController);
+router.get('/properties/:id/ical-links', authenticate, requireRole('host', 'admin'), getIcalLinksController);
+router.post('/properties/:id/ical-links', authenticate, requireRole('host', 'admin'), addIcalLinkController);
+router.delete('/properties/:id/ical-links/:linkId', authenticate, requireRole('host', 'admin'), removeIcalLinkController);
 
-// POST /properties/:id/ical-links - Agregar enlace iCal externo
-router.post('/properties/:id/ical-links', authenticate, addIcalLinkController);
-
-// DELETE /properties/:id/ical-links/:linkId - Eliminar enlace iCal
-router.delete('/properties/:id/ical-links/:linkId', authenticate, removeIcalLinkController);
-
-// POST /ical/sync - Sincronizar todos los enlaces iCal (cron/admin)
-router.post('/ical/sync', syncIcalController);
+router.post('/ical/sync', requireCronSecret, syncIcalController);
 
 export default router;

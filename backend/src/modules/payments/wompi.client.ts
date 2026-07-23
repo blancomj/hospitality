@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { config } from '../../config/index.js';
 
 interface WompiTransaction {
@@ -17,6 +18,18 @@ interface WompiRefundResponse {
   status: string;
 }
 
+export interface WompiEvent {
+  event: string;
+  data: Record<string, any>;
+  environment?: string;
+  signature: {
+    properties: string[];
+    checksum: string;
+  };
+  timestamp: number;
+  sent_at?: string;
+}
+
 export class WompiClient {
   private baseUrl: string;
   private privateKey: string;
@@ -34,10 +47,7 @@ export class WompiClient {
       ...options.headers,
     };
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
       const error = await response.text();
@@ -61,21 +71,59 @@ export class WompiClient {
     }) as Promise<WompiRefundResponse>;
   }
 
-  verifyWebhookSignature(
-    signature: string,
-    timestamp: string,
-    payload: string
-  ): boolean {
+  private resolvePath(obj: Record<string, any>, path: string): unknown {
+    return path.split('.').reduce<any>(
+      (acc, key) => (acc === null || acc === undefined ? undefined : acc[key]),
+      obj
+    );
+  }
+
+  /**
+   * Verifica la firma de un evento de Wompi.
+   *
+   * Especificación oficial (docs.wompi.co — Eventos):
+   *   checksum = SHA256(
+   *     valores de los campos listados en signature.properties (en orden,
+   *       resueltos contra el objeto `data`)
+   *     + timestamp (entero, tiempo UNIX del evento)
+   *     + secreto de eventos del comercio
+   *   )
+   */
+  verifyEventSignature(event: WompiEvent): boolean {
     const secret = config.wompi.webhookSecret;
-    if (!secret) return false;
+    if (!secret) {
+      console.error('WOMPI_WEBHOOK_SECRET no está configurado: se rechaza el evento.');
+      return false;
+    }
 
-    // Wompi uses SHA256 HMAC
-    const crypto = require('crypto');
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(`${timestamp}${payload}`);
-    const expectedSignature = hmac.digest('hex');
+    if (!event?.signature?.checksum || !Array.isArray(event.signature.properties)) {
+      return false;
+    }
+    if (typeof event.timestamp !== 'number') {
+      return false;
+    }
 
-    return signature === expectedSignature;
+    let concatenated = '';
+    for (const path of event.signature.properties) {
+      const value = this.resolvePath(event.data, path);
+      if (value === undefined || value === null) {
+        console.error(`Propiedad firmada ausente en el evento: ${path}`);
+        return false;
+      }
+      concatenated += String(value);
+    }
+
+    concatenated += String(event.timestamp);
+    concatenated += secret;
+
+    const expected = crypto.createHash('sha256').update(concatenated, 'utf8').digest('hex');
+
+    const received = event.signature.checksum.toLowerCase();
+    const a = Buffer.from(received, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   }
 }
 

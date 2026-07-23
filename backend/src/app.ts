@@ -1,5 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { config } from './config/index.js';
 import authRoutes from './modules/auth/auth.routes.js';
@@ -19,21 +21,52 @@ import exchangeRateRoutes from './modules/currency/exchange-rate.routes.js';
 import favoritesRoutes from './modules/properties/favorites.routes.js';
 import { getQueueDashboard } from './modules/queue/queue.service.js';
 import { getCities } from './modules/search/search.controller.js';
+import { authenticate } from './middleware/auth.middleware.js';
+import { requireRole } from './middleware/requireRole.js';
 
 const app = express();
+
+app.set('trust proxy', 1);
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Demasiadas peticiones. Intenta de nuevo en unos minutos.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { error: 'Demasiados intentos de inicio de sesión. Espera unos minutos.' },
+});
+
+const bookingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Demasiadas reservas seguidas. Espera un momento.' },
+});
 
 app.use(cors({
   origin: config.frontendUrl,
   credentials: true,
 }));
 
-// Webhook de Wompi necesita body raw para verificar firma
 app.post('/api/v1/webhooks/wompi', express.raw({ type: 'application/json' }), async (req, res) => {
   const { webhookController } = await import('./modules/payments/payments.controller.js');
   await webhookController(req, res);
 });
 
-// Webhook de Brevo necesita body raw para verificar firma
 app.use('/api/v1/webhooks/brevo', express.raw({ type: 'application/json' }), async (req, res) => {
   const { processBrevoWebhook } = await import('./modules/notifications/notifications.service.js');
   try {
@@ -53,13 +86,9 @@ app.use('/api/v1/webhooks/brevo', express.raw({ type: 'application/json' }), asy
 
 app.use(express.json());
 
-// Serve uploaded files
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// Queue dashboard (admin only in production)
-if (config.nodeEnv === 'development') {
-  app.use('/admin/queues', getQueueDashboard());
-}
+app.use('/admin/queues', authenticate, requireRole('admin'), getQueueDashboard());
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -67,12 +96,14 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.get('/api/v1/cities', getCities);
 
-app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1', generalLimiter);
+
+app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/host-profiles', hostProfilesRoutes);
 app.use('/api/v1/properties', propertiesRoutes);
 app.use('/api/v1/search', searchRoutes);
-app.use('/api/v1/bookings', bookingsRoutes);
+app.use('/api/v1/bookings', bookingLimiter, bookingsRoutes);
 app.use('/api/v1', paymentsRoutes);
 app.use('/api/v1', payoutsRoutes);
 app.use('/api/v1', reviewsRoutes);

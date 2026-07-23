@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth.middleware.js';
+import { requireRole } from '../../middleware/requireRole.js';
 import {
   getHostDashboardController,
   getHostCalendarController,
@@ -9,16 +10,11 @@ import {
 
 const router = Router();
 
-// GET /host/dashboard - Dashboard del propietario
-router.get('/host/dashboard', authenticate, getHostDashboardController);
+router.use(authenticate, requireRole('host', 'admin'));
 
-// GET /host/calendar - Calendario multi-propiedad
-router.get('/host/calendar', authenticate, getHostCalendarController);
-
-// GET /host/bookings - Reservas del propietario
-router.get('/host/bookings', authenticate, getHostBookingsController);
-
-// GET /host/finances - Historial financiero
-router.get('/host/finances', authenticate, getHostFinancesController);
+router.get('/host/dashboard', getHostDashboardController);
+router.get('/host/calendar', getHostCalendarController);
+router.get('/host/bookings', getHostBookingsController);
+router.get('/host/finances', getHostFinancesController);
 
 export default router;

@@ -9,10 +9,6 @@ const firebaseLoginSchema = z.object({
   idToken: z.string().min(1, 'El ID token de Firebase es requerido'),
 });
 
-const googleLoginSchema = z.object({
-  idToken: z.string().min(1, 'El id_token de Google es requerido'),
-});
-
 const refreshSchema = z.object({
   refreshToken: z.string().min(1, 'El refresh token es requerido'),
 });
@@ -67,50 +63,6 @@ export const firebaseLogin = async (req: Request, res: Response): Promise<void> 
     }
     console.error('Error en firebaseLogin:', error);
     res.status(401).json({ error: (error as Error).message || 'Error al autenticar' });
-  }
-};
-
-export const googleLogin = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { idToken } = googleLoginSchema.parse(req.body);
-
-    const googleUser = await authService.validateGoogleToken(idToken);
-
-    const user = await authService.upsertGoogleUser(
-      googleUser.googleId,
-      googleUser.email,
-      googleUser.fullName,
-      googleUser.avatarUrl
-    );
-
-    const accessToken = authService.generateAccessToken(user.id);
-    const refreshToken = authService.generateRefreshToken(user.id);
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-        avatarUrl: user.avatar_url,
-        role: user.role,
-        locale: user.locale,
-      },
-      accessToken,
-      refreshToken,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        error: 'Datos inválidos',
-        details: error.errors,
-      });
-      return;
-    }
-
-    console.error('Error en googleLogin:', error);
-    res.status(401).json({
-      error: (error as Error).message || 'Error al autenticar con Google',
-    });
   }
 };
 

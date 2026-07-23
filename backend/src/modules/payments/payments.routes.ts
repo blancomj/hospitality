@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth.middleware.js';
+import { requireRole } from '../../middleware/requireRole.js';
+import { requireCronSecret } from '../../middleware/requireCronSecret.js';
 import {
   createPaymentIntentController,
-  webhookController,
   refundBookingController,
   expirePaymentsController,
 } from './payments.controller.js';
 
 const router = Router();
 
-// POST /bookings/:id/payment-intent - Crear intención de pago
 router.post(
   '/bookings/:id/payment-intent',
   authenticate,
@@ -19,19 +19,19 @@ router.post(
   }
 );
 
-// POST /webhooks/wompi - Webhook de Wompi (sin auth, valida firma)
-router.post('/webhooks/wompi', webhookController);
+// NOTA: la ruta POST /webhooks/wompi NO se declara aquí.
+// Está montada directamente en app.ts ANTES de express.json(), porque la
+// verificación de firma necesita el cuerpo crudo (express.raw).
 
-// POST /bookings/:id/refund - Reembolsar reserva (admin)
 router.post(
   '/bookings/:id/refund',
   authenticate,
+  requireRole('admin'),
   async (req, res) => {
     await refundBookingController(req, res);
   }
 );
 
-// POST /payments/expire - Expirar pagos pendientes (cron)
-router.post('/payments/expire', expirePaymentsController);
+router.post('/payments/expire', requireCronSecret, expirePaymentsController);
 
 export default router;

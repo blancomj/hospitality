@@ -4,6 +4,7 @@ import * as propertiesService from './properties.service.js';
 import { processPropertyImage } from './image-processor.service.js';
 import { addImageJob } from '../queue/queue.service.js';
 import { Property } from '../../types/index.js';
+import { normalizeVideo, addVideoSchema } from './video-url.util.js';
 
 const createPropertySchema = z.object({
   title: z.string().min(1).max(150),
@@ -152,7 +153,6 @@ export const addPhoto = async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id as string;
 
     if (req.file) {
-      // Process image with sharp
       const processed = await processPropertyImage(req.file, parseInt(id));
       const photo = await propertiesService.addPropertyPhoto(
         id, 
@@ -163,7 +163,6 @@ export const addPhoto = async (req: Request, res: Response): Promise<void> => {
       );
       res.status(201).json({ photo });
     } else {
-      // Legacy: accept URL directly
       const { url, thumbnailUrl, sortOrder } = req.body;
       const photo = await propertiesService.addPropertyPhoto(id, req.user!.id, url, thumbnailUrl, sortOrder);
       res.status(201).json({ photo });
@@ -213,13 +212,25 @@ export const reorderPhotos = async (req: Request, res: Response): Promise<void> 
 export const addVideo = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-    const { source, url, thumbnailUrl } = req.body;
 
-    const video = await propertiesService.addPropertyVideo(id, req.user!.id, source, url, thumbnailUrl);
+    const parsed = addVideoSchema.parse(req.body);
+    const normalized = normalizeVideo(parsed.source, parsed.url);
+
+    const video = await propertiesService.addPropertyVideo(
+      id,
+      req.user!.id,
+      normalized.source,
+      normalized.url,
+      normalized.thumbnailUrl
+    );
     res.status(201).json({ video });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Datos inválidos', details: error.errors });
+      return;
+    }
     console.error('Error en addVideo:', error);
-    res.status(500).json({ error: (error as Error).message || 'Error interno del servidor' });
+    res.status(400).json({ error: (error as Error).message || 'Error interno del servidor' });
   }
 };
 

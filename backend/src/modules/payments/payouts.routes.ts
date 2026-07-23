@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth.middleware.js';
+import { requireRole } from '../../middleware/requireRole.js';
 import {
   approveHostController,
   getPendingHostsController,
@@ -14,31 +15,24 @@ import {
 
 const router = Router();
 
-// POST /host-approvals - Aprobar/rechazar propietario (admin)
-router.post('/host-approvals', authenticate, approveHostController);
+const adminRouter = Router();
+adminRouter.use(authenticate, requireRole('admin'));
 
-// GET /host-approvals/pending - Listar propietarios pendientes (admin)
-router.get('/host-approvals/pending', authenticate, getPendingHostsController);
+adminRouter.post('/host-approvals', approveHostController);
+adminRouter.get('/host-approvals/pending', getPendingHostsController);
+adminRouter.get('/host-approvals', getAllHostsController);
+adminRouter.post('/payouts/run', runPayoutsController);
+adminRouter.get('/admin/payouts', getPendingPayoutsController);
+adminRouter.get('/admin/reports/commissions', getCommissionReportController);
+adminRouter.post('/payouts/:payoutId/confirm', confirmPayoutController);
+adminRouter.post('/payouts/:payoutId/fail', failPayoutController);
 
-// GET /host-approvals - Listar todos los propietarios (admin)
-router.get('/host-approvals', authenticate, getAllHostsController);
+const hostRouter = Router();
+hostRouter.use(authenticate, requireRole('host', 'admin'));
 
-// POST /payouts/run - Ejecutar payouts pendientes (admin/cron)
-router.post('/payouts/run', authenticate, runPayoutsController);
+hostRouter.get('/payouts/mine', getMyPayoutsController);
 
-// GET /payouts/mine - Historial de payouts del propietario
-router.get('/payouts/mine', authenticate, getMyPayoutsController);
-
-// GET /admin/payouts - Listar payouts pendientes (admin)
-router.get('/admin/payouts', authenticate, getPendingPayoutsController);
-
-// GET /admin/reports/commissions - Reporte de comisiones (admin)
-router.get('/admin/reports/commissions', authenticate, getCommissionReportController);
-
-// POST /payouts/:payoutId/confirm - Confirmar pago de payout
-router.post('/payouts/:payoutId/confirm', authenticate, confirmPayoutController);
-
-// POST /payouts/:payoutId/fail - Marcar payout como fallido
-router.post('/payouts/:payoutId/fail', authenticate, failPayoutController);
+router.use(hostRouter);
+router.use(adminRouter);
 
 export default router;

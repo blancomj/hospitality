@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../../middleware/auth.middleware.js';
+import { requireRole } from '../../middleware/requireRole.js';
 import pool from '../../db/connection.js';
 import {
   getAdminDashboardController,
@@ -17,38 +18,20 @@ import {
 
 const router = Router();
 
-// GET /admin/dashboard - KPIs globales
-router.get('/admin/dashboard', authenticate, getAdminDashboardController);
+router.use(authenticate, requireRole('admin'));
 
-// GET /admin/users - Búsqueda de usuarios
-router.get('/admin/users', authenticate, searchUsersController);
+router.get('/admin/dashboard', getAdminDashboardController);
+router.get('/admin/users', searchUsersController);
+router.patch('/admin/users/:id/status', updateUserStatusController);
+router.get('/admin/properties', getPropertiesForModerationController);
+router.patch('/admin/properties/:id/moderate', moderatePropertyController);
+router.get('/admin/bookings/:id/timeline', getBookingTimelineController);
+router.post('/admin/bookings/:id/force-cancel', forceCancelBookingController);
+router.get('/admin/settings', getPlatformSettingsController);
+router.put('/admin/settings/:key', updatePlatformSettingController);
+router.get('/admin/audit-log', getAuditLogController);
 
-// PATCH /admin/users/:id/status - Suspender/reactivar usuario
-router.patch('/admin/users/:id/status', authenticate, updateUserStatusController);
-
-// GET /admin/properties - Cola de moderación
-router.get('/admin/properties', authenticate, getPropertiesForModerationController);
-
-// PATCH /admin/properties/:id/moderate - Aprobar/despublicar propiedad
-router.patch('/admin/properties/:id/moderate', authenticate, moderatePropertyController);
-
-// GET /admin/bookings/:id/timeline - Línea de tiempo de reserva
-router.get('/admin/bookings/:id/timeline', authenticate, getBookingTimelineController);
-
-// POST /admin/bookings/:id/force-cancel - Cancelación forzada
-router.post('/admin/bookings/:id/force-cancel', authenticate, forceCancelBookingController);
-
-// GET /admin/settings - Leer configuración
-router.get('/admin/settings', authenticate, getPlatformSettingsController);
-
-// PUT /admin/settings/:key - Actualizar configuración
-router.put('/admin/settings/:key', authenticate, updatePlatformSettingController);
-
-// GET /admin/audit-log - Registro de auditoría
-router.get('/admin/audit-log', authenticate, getAuditLogController);
-
-// POST /admin/amenity-catalog - Agregar amenidad al catálogo
-router.post('/admin/amenity-catalog', authenticate, async (req, res) => {
+router.post('/admin/amenity-catalog', async (req, res) => {
   try {
     const schema = z.object({
       category: z.enum(['basicos','cocina','lavanderia','espacios','edificio','familia','seguridad','accesibilidad','politicas']),
@@ -76,8 +59,7 @@ router.post('/admin/amenity-catalog', authenticate, async (req, res) => {
   }
 });
 
-// PATCH /admin/amenity-catalog/:id - Actualizar amenidad
-router.patch('/admin/amenity-catalog/:id', authenticate, async (req, res) => {
+router.patch('/admin/amenity-catalog/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const schema = z.object({
@@ -116,8 +98,7 @@ router.patch('/admin/amenity-catalog/:id', authenticate, async (req, res) => {
   }
 });
 
-// PATCH /admin/payouts/:id/hold - Retener payout en disputa
-router.patch('/admin/payouts/:id/hold', authenticate, async (req, res) => {
+router.patch('/admin/payouts/:id/hold', async (req, res) => {
   try {
     const payoutId = req.params.id;
     const { hold } = z.object({ hold: z.boolean() }).parse(req.body);
