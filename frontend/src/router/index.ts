@@ -85,6 +85,18 @@ const publicRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredRole: 'host' },
   },
   {
+    path: 'panel/properties/new',
+    name: 'host-property-new',
+    component: () => import('@/features/host-panel/PropertyCreateView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'host' },
+  },
+  {
+    path: 'panel/properties/:id/edit',
+    name: 'host-property-edit',
+    component: () => import('@/features/host-panel/PropertyEditView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'host' },
+  },
+  {
     path: 'panel/property/:propertyId/bookings',
     name: 'property-bookings',
     component: () => import('@/features/bookings/PropertyBookingsView.vue'),

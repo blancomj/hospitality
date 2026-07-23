@@ -15,24 +15,22 @@ import {
 
 const router = Router();
 
-const adminRouter = Router();
-adminRouter.use(authenticate, requireRole('admin'));
+const soloAdmin = [authenticate, requireRole('admin')] as const;
+const soloHost = [authenticate, requireRole('host', 'admin')] as const;
 
-adminRouter.post('/host-approvals', approveHostController);
-adminRouter.get('/host-approvals/pending', getPendingHostsController);
-adminRouter.get('/host-approvals', getAllHostsController);
-adminRouter.post('/payouts/run', runPayoutsController);
-adminRouter.get('/admin/payouts', getPendingPayoutsController);
-adminRouter.get('/admin/reports/commissions', getCommissionReportController);
-adminRouter.post('/payouts/:payoutId/confirm', confirmPayoutController);
-adminRouter.post('/payouts/:payoutId/fail', failPayoutController);
+router.use('/admin', authenticate, requireRole('admin'));
 
-const hostRouter = Router();
-hostRouter.use(authenticate, requireRole('host', 'admin'));
+router.get('/admin/payouts', getPendingPayoutsController);
+router.get('/admin/reports/commissions', getCommissionReportController);
 
-hostRouter.get('/payouts/mine', getMyPayoutsController);
+router.post('/host-approvals', ...soloAdmin, approveHostController);
+router.get('/host-approvals/pending', ...soloAdmin, getPendingHostsController);
+router.get('/host-approvals', ...soloAdmin, getAllHostsController);
 
-router.use(hostRouter);
-router.use(adminRouter);
+router.get('/payouts/mine', ...soloHost, getMyPayoutsController);
+
+router.post('/payouts/run', ...soloAdmin, runPayoutsController);
+router.post('/payouts/:payoutId/confirm', ...soloAdmin, confirmPayoutController);
+router.post('/payouts/:payoutId/fail', ...soloAdmin, failPayoutController);
 
 export default router;

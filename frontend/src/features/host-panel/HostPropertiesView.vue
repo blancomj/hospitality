@@ -69,10 +69,14 @@
 
             <!-- Actions -->
             <div class="flex items-center gap-2">
+              <!-- Publicar exige al menos una foto, igual que en el editor:
+                   una propiedad sin imágenes no tiene nada que mostrar. -->
               <button
                 v-if="property.status === 'draft' || property.status === 'paused'"
+                :disabled="!property.main_photo_url"
+                :title="!property.main_photo_url ? t('hostPanel.needPhotosToPublish') : ''"
                 @click="changeStatus(property, 'published')"
-                class="flex-1 btn-primary text-sm py-2"
+                class="flex-1 btn-primary text-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ t('hostPanel.activate') }}
               </button>
@@ -83,12 +87,23 @@
               >
                 {{ t('hostPanel.pause') }}
               </button>
+              <!-- Este enlace decía "Editar" pero abría la ficha PÚBLICA en otra
+                   pestaña. Ahora lleva al editor real; para ver la ficha pública
+                   está el botón contiguo. -->
+              <router-link
+                :to="`/${locale}/panel/properties/${property.id}/edit`"
+                class="btn-ghost text-sm py-2 px-3 border"
+              >
+                {{ t('hostPanel.edit') }}
+              </router-link>
               <router-link
                 :to="`/${locale}/property/${property.id}`"
                 class="btn-ghost text-sm py-2 px-3 border"
                 target="_blank"
+                :aria-label="t('hostPanel.viewPublic')"
+                :title="t('hostPanel.viewPublic')"
               >
-                {{ t('hostPanel.edit') }}
+                <ExternalLink class="w-4 h-4" />
               </router-link>
             </div>
           </div>
@@ -102,7 +117,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { ImageIcon } from 'lucide-vue-next'
+import { ImageIcon, ExternalLink } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'

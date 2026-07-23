@@ -18,7 +18,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate, requireRole('admin'));
+router.use('/admin', authenticate, requireRole('admin'));
 
 router.get('/admin/dashboard', getAdminDashboardController);
 router.get('/admin/users', searchUsersController);

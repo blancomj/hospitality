@@ -76,7 +76,24 @@ export const getProperty = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    if (property.status === 'draft' && property.hostId !== req.user?.id) {
+    // La vista v_property_detail devuelve las columnas tal como están en SQL
+    // (host_id), pero la interfaz Property las declara en camelCase (hostId).
+    // El cast `as Property` impedía que TypeScript detectara el desajuste, así
+    // que property.hostId era SIEMPRE undefined y la comparación
+    // `undefined !== req.user.id` daba true incluso para el dueño: cualquier
+    // borrador devolvía 404 a su propio propietario al abrir el editor.
+    const propietarioId = Number(
+      (property as any).host_id ?? (property as any).hostId
+    );
+    const esPropietario = req.user?.id === propietarioId;
+    const esAdmin = req.user?.role === 'admin';
+
+    // Los borradores y las propiedades pausadas no son públicas, pero sí deben
+    // ser visibles para su dueño (que las está editando) y para un admin
+    // (que las modera).
+    const esVisiblePublicamente = property.status === 'published';
+
+    if (!esVisiblePublicamente && !esPropietario && !esAdmin) {
       res.status(404).json({ error: 'Propiedad no encontrada' });
       return;
     }
@@ -140,7 +157,14 @@ export const updatePropertyStatus = async (req: Request, res: Response): Promise
 export const deleteProperty = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-    await propertiesService.deleteProperty(id, req.user!.id);
+    const resultado = await propertiesService.deleteProperty(id, req.user!.id);
+
+    if (!resultado.ok) {
+      // 409: la petición es válida pero choca con el estado actual del recurso.
+      res.status(409).json({ error: resultado.message, code: resultado.code });
+      return;
+    }
+
     res.json({ message: 'Propiedad eliminada' });
   } catch (error) {
     console.error('Error en deleteProperty:', error);

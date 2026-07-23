@@ -10,7 +10,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate, requireRole('host', 'admin'));
+router.use('/host', authenticate, requireRole('host', 'admin'));
 
 router.get('/host/dashboard', getHostDashboardController);
 router.get('/host/calendar', getHostCalendarController);

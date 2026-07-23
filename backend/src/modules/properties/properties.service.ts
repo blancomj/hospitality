@@ -104,12 +104,71 @@ export const updateProperty = async (
   return getPropertyById(propertyId);
 };
 
-export const deleteProperty = async (propertyId: number | string, hostId: number): Promise<boolean> => {
-  await pool.execute(
-    `UPDATE properties SET status = 'draft' WHERE id = ? AND host_id = ?`,
+export interface ResultadoBorrado {
+  ok: boolean;
+  message?: string;
+  code?: string;
+}
+
+/**
+ * Elimina una propiedad, con salvaguardas.
+ *
+ * La versión anterior NO eliminaba nada: hacía `UPDATE ... SET status='draft'`
+ * y aun así respondía "Propiedad eliminada". El propietario creía haberla
+ * borrado y la propiedad seguía existiendo como borrador.
+ *
+ * Regla de negocio: solo se puede eliminar de verdad un BORRADOR SIN RESERVAS.
+ * Una propiedad con historial de reservas no debe borrarse nunca: rompería la
+ * trazabilidad de pagos y payouts, que son registros contables. Para esos casos
+ * la vía correcta es pausarla ('paused'), que la retira del catálogo público
+ * conservando el historial.
+ */
+export const deleteProperty = async (
+  propertyId: number | string,
+  hostId: number
+): Promise<ResultadoBorrado> => {
+  const [propRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT id, status FROM properties WHERE id = ? AND host_id = ?',
     [propertyId, hostId]
   );
-  return true;
+
+  if (propRows.length === 0) {
+    return { ok: false, message: 'Propiedad no encontrada', code: 'NOT_FOUND' };
+  }
+
+  const propiedad = propRows[0] as any;
+
+  if (propiedad.status !== 'draft') {
+    return {
+      ok: false,
+      code: 'NOT_A_DRAFT',
+      message:
+        'Solo se pueden eliminar propiedades en borrador. ' +
+        'Para retirar esta propiedad del catálogo, pausala.',
+    };
+  }
+
+  const [bookingRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT COUNT(*) AS total FROM bookings WHERE property_id = ?',
+    [propertyId]
+  );
+  const totalReservas = Number((bookingRows[0] as any).total) || 0;
+
+  if (totalReservas > 0) {
+    return {
+      ok: false,
+      code: 'HAS_BOOKINGS',
+      message:
+        'Esta propiedad tiene reservas asociadas y no puede eliminarse, ' +
+        'porque se perdería el historial de pagos. Pausala en su lugar.',
+    };
+  }
+
+  // Sin reservas: se elimina de verdad. Fotos, videos, amenidades, traducciones
+  // y enlaces iCal caen por ON DELETE CASCADE.
+  await pool.execute('DELETE FROM properties WHERE id = ? AND host_id = ?', [propertyId, hostId]);
+
+  return { ok: true };
 };
 
 export const getPropertiesByHost = async (hostId: number): Promise<PropertyRow[]> => {
@@ -137,12 +196,27 @@ export const addPropertyPhoto = async (
     throw new Error('Propiedad no encontrada o no autorizado');
   }
 
+  // Antes se descartaba thumbnailUrl (la miniatura WebP que genera sharp se
+  // creaba en disco pero nunca se guardaba) y se marcaba is_primary=1 en TODAS
+  // las fotos, porque el controller siempre pasa sortOrder=0.
+  //
+  // Ahora la posición se calcula a partir de las fotos existentes y solo la
+  // primera del inmueble queda como principal.
+  const [existentes] = await pool.execute<RowDataPacket[]>(
+    'SELECT COUNT(*) AS total FROM property_photos WHERE property_id = ?',
+    [propertyId]
+  );
+  const total = Number((existentes[0] as any).total) || 0;
+  const posicion = total;
+  const esPrincipal = total === 0 ? 1 : 0;
+
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO property_photos (property_id, image_url, is_primary) VALUES (?, ?, ?)',
-    [propertyId, url, sortOrder === 0 ? 1 : 0]
+    `INSERT INTO property_photos (property_id, image_url, thumbnail_url, is_primary, sort_order)
+     VALUES (?, ?, ?, ?, ?)`,
+    [propertyId, url, thumbnailUrl, esPrincipal, posicion]
   );
 
-  return { id: result.insertId, url, thumbnailUrl, sortOrder };
+  return { id: result.insertId, url, thumbnailUrl, sortOrder: posicion };
 };
 
 export const deletePropertyPhoto = async (
@@ -173,11 +247,24 @@ export const reorderPropertyPhotos = async (
     throw new Error('Propiedad no encontrada o no autorizado');
   }
 
-  for (let i = 0; i < photoIds.length; i++) {
-    await pool.execute(
-      'UPDATE property_photos SET is_primary = ? WHERE id = ? AND property_id = ?',
-      [i === 0 ? 1 : 0, photoIds[i], propertyId]
-    );
+  // Antes solo se alternaba is_primary, así que un reordenamiento real era
+  // imposible: todas las fotos salvo la primera quedaban en orden arbitrario.
+  // Ahora se persiste sort_order y la primera de la lista queda como portada.
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (let i = 0; i < photoIds.length; i++) {
+      await conn.execute(
+        'UPDATE property_photos SET sort_order = ?, is_primary = ? WHERE id = ? AND property_id = ?',
+        [i, i === 0 ? 1 : 0, photoIds[i], propertyId]
+      );
+    }
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
   }
 };
 
