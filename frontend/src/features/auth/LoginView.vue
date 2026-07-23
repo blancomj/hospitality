@@ -63,9 +63,9 @@
             <div v-if="method === 'password'">
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-sm font-medium text-gray-700">{{ t('auth.password') }}</label>
-                <button v-if="mode === 'login'" type="button" @click="handleReset" class="text-xs text-primary-600 hover:underline">
+                <a v-if="mode === 'login'" href="#" @click.prevent="handleReset" class="text-xs text-primary-600 hover:underline">
                   {{ t('auth.forgotPassword') }}
-                </button>
+                </a>
               </div>
               <input v-model="password" type="password" class="input-base" placeholder="••••••••" required minlength="6" />
             </div>
@@ -89,12 +89,12 @@
           </div>
 
           <!-- Alternar login <-> registro -->
-          <p v-if="!magicLinkSent" class="mt-6 text-sm text-center text-gray-600">
+          <div v-if="!magicLinkSent" class="mt-6 text-sm text-center text-gray-600">
             {{ mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount') }}
-            <button @click="toggleMode" class="text-primary-600 font-medium hover:underline ml-1">
+            <button type="button" @click="toggleMode" class="text-primary-600 font-medium hover:underline ml-1 cursor-pointer">
               {{ mode === 'login' ? t('auth.registerButton') : t('auth.loginButton') }}
             </button>
-          </p>
+          </div>
 
           <p class="mt-6 text-xs text-center text-gray-500">
             {{ t('auth.terms') }}
@@ -159,8 +159,8 @@ const handleEmailSubmit = async () => {
 };
 
 const handleReset = async () => {
-  if (!email.value) {
-    toast.info(t('auth.enterEmailFirst'));
+  if (!email.value || !email.value.trim()) {
+    toast.warning(t('auth.enterEmailFirst'));
     return;
   }
   try {
