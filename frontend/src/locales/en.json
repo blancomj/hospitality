@@ -49,7 +49,29 @@
   "auth": {
     "loginTitle": "Welcome",
     "loginSubtitle": "Sign in to book amazing properties",
+    "registerTitle": "Create your account",
+    "registerSubtitle": "Sign up to start booking",
     "googleLogin": "Continue with Google",
+    "or": "or",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "Your name",
+    "loginButton": "Sign in",
+    "registerButton": "Sign up",
+    "sendMagicLink": "Send access link",
+    "useMagicLink": "I'd rather get a link by email",
+    "usePassword": "I'd rather use a password",
+    "forgotPassword": "Forgot your password?",
+    "resetSent": "We sent you an email to reset your password",
+    "enterEmailFirst": "Enter your email first",
+    "magicLinkSent": "Check your email",
+    "magicLinkHint": "We sent an access link to:",
+    "back": "Back",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "welcomeBack": "Welcome back!",
+    "terms": "By continuing, you agree to our Terms of Service and Privacy Policy",
     "loginError": "Login error. Please try again.",
     "sessionExpired": "Your session has expired. Please sign in again."
   },
@@ -123,6 +145,8 @@
     "bedrooms": "bedrooms",
     "bed": "bed",
     "beds": "beds",
+    "bedroom": "bedroom",
+    "bedrooms": "bedrooms",
     "bathrooms": "bathrooms",
     "bathroom": "bathroom",
     "host": "Host",
@@ -278,7 +302,25 @@
     "pending": "Pending",
     "failed": "Failed",
     "noData": "No data",
-    "noDataDescription": "Select a period to view the financial history."
+    "noDataDescription": "Select a period to view the financial history.",
+    "myPropertiesTitle": "My Properties",
+    "myPropertiesSubtitle": "Manage the status and information of your properties",
+    "addNewProperty": "Add property",
+    "status": "Status",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "statusPaused": "Paused",
+    "changeStatus": "Change status",
+    "activate": "Activate",
+    "pause": "Pause",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Delete this property?",
+    "noProperties": "No properties",
+    "noPropertiesDescription": "You haven't added any properties yet. Create your first property!",
+    "pricePerNight": "Price / night",
+    "city": "City",
+    "propertyType": "Type"
   },
   "admin": {
     "dashboard": "Admin Panel",
@@ -344,4 +386,7 @@
     "financesLoadError": "Error loading finances",
     "csvExportError": "Error exporting CSV"
   }
+
+
+
 }

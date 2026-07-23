@@ -4,6 +4,7 @@ import { authenticate } from '../../middleware/auth.middleware.js';
 
 const router = Router();
 
+router.post('/firebase', authController.firebaseLogin);
 router.post('/google', authController.googleLogin);
 router.post('/refresh', authController.refreshToken);
 router.post('/logout', authenticate, authController.logout);

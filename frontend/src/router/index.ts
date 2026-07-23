@@ -13,6 +13,12 @@ const publicRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: 'login',
+    name: 'login',
+    component: () => import('@/features/auth/LoginView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: 'search',
     name: 'search',
     component: () => import('@/features/search/SearchView.vue'),
@@ -70,6 +76,12 @@ const publicRoutes: RouteRecordRaw[] = [
     path: 'panel',
     name: 'host-panel',
     component: () => import('@/features/host-panel/HostDashboardView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'host' },
+  },
+  {
+    path: 'panel/properties',
+    name: 'host-properties',
+    component: () => import('@/features/host-panel/HostPropertiesView.vue'),
     meta: { requiresAuth: true, requiredRole: 'host' },
   },
   {
@@ -207,7 +219,11 @@ router.beforeEach(async (to, _from, next) => {
     }
 
     if (!authStore.user) {
-      next({ name: 'home', params: { locale: i18nStore.locale } });
+      next({
+        name: 'login',
+        params: { locale: i18nStore.locale },
+        query: { redirect: to.fullPath },
+      });
       return;
     }
 

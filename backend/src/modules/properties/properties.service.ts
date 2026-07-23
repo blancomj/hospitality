@@ -113,15 +113,12 @@ export const deleteProperty = async (propertyId: number | string, hostId: number
 };
 
 export const getPropertiesByHost = async (hostId: number): Promise<PropertyRow[]> => {
-  const [rows] = await pool.execute<PropertyRow[]>(
-    `SELECT p.*,
-      (SELECT url FROM property_photos pp WHERE pp.property_id = p.id ORDER BY pp.sort_order ASC LIMIT 1) AS main_photo_url
-     FROM properties p
-     WHERE p.host_id = ?
-     ORDER BY p.created_at DESC`,
+  const [rows] = await pool.execute(
+    'CALL sp_get_my_properties(?)',
     [hostId]
   );
-  return rows;
+  const result = rows as any;
+  return result[0] as PropertyRow[];
 };
 
 export const addPropertyPhoto = async (
@@ -141,8 +138,8 @@ export const addPropertyPhoto = async (
   }
 
   const [result] = await pool.execute<ResultSetHeader>(
-    'INSERT INTO property_photos (property_id, url, thumbnail_url, sort_order) VALUES (?, ?, ?, ?)',
-    [propertyId, url, thumbnailUrl, sortOrder]
+    'INSERT INTO property_photos (property_id, image_url, is_primary) VALUES (?, ?, ?)',
+    [propertyId, url, sortOrder === 0 ? 1 : 0]
   );
 
   return { id: result.insertId, url, thumbnailUrl, sortOrder };
@@ -178,8 +175,8 @@ export const reorderPropertyPhotos = async (
 
   for (let i = 0; i < photoIds.length; i++) {
     await pool.execute(
-      'UPDATE property_photos SET sort_order = ? WHERE id = ? AND property_id = ?',
-      [i, photoIds[i], propertyId]
+      'UPDATE property_photos SET is_primary = ? WHERE id = ? AND property_id = ?',
+      [i === 0 ? 1 : 0, photoIds[i], propertyId]
     );
   }
 };

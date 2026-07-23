@@ -86,7 +86,7 @@ export async function getHostFinancesController(
 
     if (format === 'csv') {
       // Generate CSV
-      const headers = ['Propiedad', 'Ciudad', 'Check-in', 'Check-out', 'Bruto', 'Comisión', 'Neto', 'Estado', 'Referencia', 'Pagado'];
+      const headers = ['Propiedad', 'Ciudad', 'Check-in', 'Check-out', 'Bruto', 'Comisión', 'Neto', 'Estado'];
       const rows = finances.map(f => [
         f.property_title,
         f.property_city,
@@ -96,8 +96,6 @@ export async function getHostFinancesController(
         f.commission_amount,
         f.net_amount,
         f.status,
-        f.wompi_payout_reference || '',
-        f.paid_at || '',
       ]);
 
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

@@ -60,9 +60,17 @@
         </div>
 
         <!-- Quick links -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <router-link
-            to="/panel/calendar"
+            :to="`/${locale}/panel/properties`"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <Building class="w-8 h-8 text-primary-600 mb-3" />
+            <h3 class="font-medium text-gray-900">{{ t('hostPanel.properties') }}</h3>
+            <p class="text-sm text-gray-500">{{ t('hostPanel.myPropertiesSubtitle') }}</p>
+          </router-link>
+          <router-link
+            :to="`/${locale}/panel/calendar`"
             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
           >
             <Calendar class="w-8 h-8 text-primary-600 mb-3" />
@@ -70,7 +78,7 @@
             <p class="text-sm text-gray-500">{{ t('hostPanel.manageAvailability') }}</p>
           </router-link>
           <router-link
-            to="/panel/bookings"
+            :to="`/${locale}/panel/bookings`"
             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
           >
             <BookOpen class="w-8 h-8 text-primary-600 mb-3" />
@@ -78,7 +86,7 @@
             <p class="text-sm text-gray-500">{{ t('hostPanel.viewAllBookings') }}</p>
           </router-link>
           <router-link
-            to="/panel/finances"
+            :to="`/${locale}/panel/finances`"
             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
           >
             <DollarSign class="w-8 h-8 text-primary-600 mb-3" />
@@ -92,16 +100,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Calendar, BookOpen, DollarSign } from 'lucide-vue-next'
+import { useRoute } from 'vue-router'
+import { Calendar, BookOpen, DollarSign, Building } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'
 
 const { t } = useI18n()
+const route = useRoute()
 const authStore = useAuthStore()
+
+const locale = computed(() => (route.params.locale as string) || 'es')
 const toast = useToast()
 
 interface Dashboard {

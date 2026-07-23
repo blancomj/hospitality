@@ -32,7 +32,7 @@
               {{ authStore.user?.fullName }}
             </h2>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-              {{ t(`roles.${authStore.user?.role}`) }}
+              {{ authStore.user?.role ? t(`roles.${authStore.user.role}`) : '' }}
             </span>
           </div>
         </div>

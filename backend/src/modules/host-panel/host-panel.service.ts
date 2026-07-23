@@ -51,8 +51,6 @@ interface FinanceRecord {
   commission_amount: number;
   net_amount: number;
   status: string;
-  wompi_payout_reference: string | null;
-  paid_at: string | null;
   created_at: string;
 }
 
@@ -86,81 +84,23 @@ export async function getHostCalendar(
   toDate: string
 ): Promise<CalendarEvent[]> {
   const [rows] = await pool.execute(
-    `SELECT 
-      p.id AS property_id,
-      p.title AS property_title,
-      cal.date,
-      CASE 
-        WHEN b.id IS NOT NULL THEN b.status
-        WHEN ao.is_blocked = 1 THEN 'blocked'
-        ELSE 'available'
-      END AS status,
-      b.id AS booking_id,
-      u.full_name AS guest_name,
-      COALESCE(ao.is_blocked, 0) AS is_blocked,
-      ao.special_price
-    FROM properties p
-    LEFT JOIN bookings b ON p.id = b.property_id 
-      AND b.start_date <= cal.date 
-      AND b.end_date > cal.date
-      AND b.status IN ('confirmed', 'completed')
-    LEFT JOIN users u ON b.guest_id = u.id
-    LEFT JOIN availability_overrides ao ON p.id = ao.property_id AND ao.date = cal.date
-    CROSS JOIN (
-      SELECT DATE_ADD(?, INTERVAL seq DAY) AS date
-      FROM (
-        SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
-        UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9
-        UNION SELECT 10 UNION SELECT 11 UNION SELECT 12 UNION SELECT 13 UNION SELECT 14
-        UNION SELECT 15 UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19
-        UNION SELECT 20 UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24
-        UNION SELECT 25 UNION SELECT 26 UNION SELECT 27 UNION SELECT 28 UNION SELECT 29
-      ) dates
-      WHERE DATE_ADD(?, INTERVAL seq DAY) <= ?
-    ) cal
-    WHERE p.host_id = ?
-    ORDER BY p.id, cal.date`,
-    [fromDate, fromDate, toDate, hostId]
+    'CALL sp_get_host_calendar(?, ?, ?)',
+    [hostId, fromDate, toDate]
   );
-
-  return rows as CalendarEvent[];
+  const result = rows as any;
+  return result[0] as CalendarEvent[];
 }
 
 export async function getHostBookings(
   hostId: number,
   status?: string
 ): Promise<HostBooking[]> {
-  let query = `
-    SELECT 
-      b.id AS booking_id,
-      b.property_id,
-      p.title AS property_title,
-      p.city AS property_city,
-      u.full_name AS guest_name,
-      u.email AS guest_email,
-      u.phone AS guest_phone,
-      b.start_date,
-      b.end_date,
-      b.guests_count,
-      b.total_amount,
-      b.status,
-      b.created_at
-    FROM bookings b
-    JOIN properties p ON b.property_id = p.id
-    JOIN users u ON b.guest_id = u.id
-    WHERE p.host_id = ?
-  `;
-  const params: any[] = [hostId];
-
-  if (status) {
-    query += ' AND b.status = ?';
-    params.push(status);
-  }
-
-  query += ' ORDER BY b.start_date DESC';
-
-  const [rows] = await pool.execute(query, params);
-  return rows as HostBooking[];
+  const [rows] = await pool.execute(
+    'CALL sp_get_host_bookings(?, ?)',
+    [hostId, status || '']
+  );
+  const result = rows as any;
+  return result[0] as HostBooking[];
 }
 
 export async function getHostFinances(
@@ -168,39 +108,10 @@ export async function getHostFinances(
   fromDate?: string,
   toDate?: string
 ): Promise<FinanceRecord[]> {
-  let query = `
-    SELECT 
-      py.id AS payout_id,
-      py.booking_id,
-      p.title AS property_title,
-      p.city AS property_city,
-      b.start_date AS check_in,
-      b.end_date AS check_out,
-      py.gross_amount,
-      py.commission_amount,
-      py.net_amount,
-      py.status,
-      py.wompi_payout_reference,
-      py.paid_at,
-      py.created_at
-    FROM payouts py
-    JOIN bookings b ON py.booking_id = b.id
-    JOIN properties p ON b.property_id = p.id
-    WHERE py.host_id = ?
-  `;
-  const params: any[] = [hostId];
-
-  if (fromDate) {
-    query += ' AND py.created_at >= ?';
-    params.push(fromDate);
-  }
-  if (toDate) {
-    query += ' AND py.created_at <= ?';
-    params.push(toDate + ' 23:59:59');
-  }
-
-  query += ' ORDER BY py.created_at DESC';
-
-  const [rows] = await pool.execute(query, params);
-  return rows as FinanceRecord[];
+  const [rows] = await pool.execute(
+    'CALL sp_get_host_finances(?, ?, ?)',
+    [hostId, fromDate || null, toDate || null]
+  );
+  const result = rows as any;
+  return result[0] as FinanceRecord[];
 }

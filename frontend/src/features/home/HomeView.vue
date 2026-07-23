@@ -4,7 +4,7 @@
     <section class="relative bg-primary-800 text-white overflow-hidden">
       <div class="absolute inset-0">
         <img
-          src="https://images.pexels.com/photos/271639/pexels-photo-271639.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
+          src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1920&h=1080&fit=crop&q=80"
           :alt="t('home.hero.title')"
           class="w-full h-full object-cover"
           loading="eager"
@@ -196,12 +196,12 @@ const cities = [
   {
     name: 'Medellin',
     count: 0,
-    image: 'https://images.pexels.com/photos/1436752/pexels-photo-1436752.jpeg?auto=compress&cs=tinysrgb&w=800&h=500&fit=crop',
+    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=500&fit=crop&q=80',
   },
   {
     name: 'Cartagena',
     count: 0,
-    image: 'https://images.pexels.com/photos/18047915/pexels-photo-18047915.jpeg?auto=compress&cs=tinysrgb&w=800&h=500&fit=crop',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&h=500&fit=crop&q=80',
   },
 ]
 

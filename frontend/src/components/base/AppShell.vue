@@ -20,7 +20,7 @@
             
             <template v-if="authStore.isAuthenticated">
               <router-link 
-                to="/profile" 
+                :to="`/${locale}/profile`" 
                 class="text-gray-600 hover:text-primary-600 transition-colors"
               >
                 {{ t('nav.profile') }}
@@ -28,7 +28,7 @@
               
               <router-link 
                 v-if="authStore.isHost"
-                to="/panel" 
+                :to="`/${locale}/panel`" 
                 class="text-gray-600 hover:text-primary-600 transition-colors"
               >
                 {{ t('nav.hostPanel') }}
@@ -52,13 +52,14 @@
             
             <template v-else>
               <button 
-                @click="scrollToLogin"
+                @click="goToLogin"
                 class="btn-primary text-sm"
               >
                 {{ t('nav.login') }}
               </button>
             </template>
 
+            <LanguageSelector />
             <CurrencySelector />
           </nav>
 
@@ -102,13 +103,22 @@
             
             <template v-if="authStore.isAuthenticated">
               <router-link 
-                to="/profile" 
+                :to="`/${locale}/profile`" 
                 @click="mobileMenuOpen = false"
                 class="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-lg hover:bg-cream-100"
               >
                 {{ t('nav.profile') }}
               </router-link>
               
+              <router-link 
+                v-if="authStore.isHost"
+                :to="`/${locale}/panel`" 
+                @click="mobileMenuOpen = false"
+                class="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-lg hover:bg-cream-100"
+              >
+                {{ t('nav.hostPanel') }}
+              </router-link>
+
               <button 
                 @click="handleLogout"
                 class="text-left text-gray-600 hover:text-primary-600 px-3 py-2 rounded-lg hover:bg-cream-100"
@@ -119,7 +129,7 @@
             
             <template v-else>
               <button 
-                @click="scrollToLogin"
+                @click="goToLogin"
                 class="btn-primary text-sm w-full"
               >
                 {{ t('nav.login') }}
@@ -172,6 +182,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import LanguageSelector from '@/components/ux/LanguageSelector.vue'
 import CurrencySelector from '@/components/ux/CurrencySelector.vue'
 
 const { t } = useI18n()
@@ -188,8 +199,8 @@ const handleLogout = async () => {
   router.push(`/${locale.value}`)
 }
 
-const scrollToLogin = () => {
+const goToLogin = () => {
   mobileMenuOpen.value = false
-  window.dispatchEvent(new Event('scroll-to-login'))
+  router.push(`/${locale.value}/login`)
 }
 </script>

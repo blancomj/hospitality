@@ -1,4 +1,6 @@
 import mysql from 'mysql2/promise';
+import dns from 'dns';
+import { promisify } from 'util';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -6,12 +8,22 @@ import { config } from '../config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const dnsLookup = promisify(dns.lookup);
 
 async function migrate(): Promise<void> {
   console.log('🔄 Iniciando migraciones...');
-  
+
+  let host = config.db.host;
+  try {
+    const result = await dnsLookup(config.db.host, { family: 4 });
+    host = result.address;
+    console.log(`[DB] Resolved ${config.db.host} -> ${host} (IPv4)`);
+  } catch {
+    console.warn(`[DB] DNS lookup failed, using original: ${config.db.host}`);
+  }
+
   const connection = await mysql.createConnection({
-    host: config.db.host,
+    host,
     port: config.db.port,
     user: config.db.user,
     password: config.db.password,
@@ -61,6 +73,15 @@ async function migrate(): Promise<void> {
       '036_create_ical_links.sql',
       '037_create_exchange_rates.sql',
       '038_add_cancellation_columns.sql',
+      '039_create_user_favorites.sql',
+      '040_add_firebase_uid.sql',
+      '041_fix_host_profiles_columns.sql',
+      '042_create_critical_stored_procedures.sql',
+      '043_add_property_type_to_view.sql',
+      '044_add_property_type.sql',
+      '045_add_payout_columns.sql',
+      '046_full_schema_alignment.sql',
+      '047_fix_sp_host_finances.sql',
     ];
 
     for (const file of migrations) {

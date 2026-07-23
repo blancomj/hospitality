@@ -6,6 +6,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface UserRow extends RowDataPacket {
   id: number;
+  firebase_uid: string | null;
   google_id: string | null;
   email: string;
   full_name: string;
