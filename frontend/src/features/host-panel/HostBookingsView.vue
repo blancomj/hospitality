@@ -61,6 +61,13 @@
               >
                 {{ getStatusLabel(booking.status) }}
               </span>
+              <button
+                v-if="booking.status === 'confirmed' || booking.status === 'pending_payment'"
+                class="mt-3 w-full px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                @click="cancellingBooking = booking.booking_id"
+              >
+                {{ t('hostPanel.cancelBooking') }}
+              </button>
             </div>
           </div>
         </div>
@@ -74,6 +81,13 @@
       />
     </div>
   </AppShell>
+  <CancelBookingDialog
+    :open="cancellingBooking !== null"
+    :booking-id="cancellingBooking"
+    perspective="host"
+    @close="cancellingBooking = null"
+    @cancelled="fetchBookings()"
+  />
 </template>
 
 <script setup lang="ts">
@@ -83,6 +97,7 @@ import { useToast } from 'vue-toastification'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import CancelBookingDialog from '@/features/bookings/CancelBookingDialog.vue'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -113,6 +128,7 @@ const filters = computed(() => [
 const bookings = ref<Booking[]>([])
 const isLoading = ref(true)
 const currentFilter = ref('')
+const cancellingBooking = ref<number | null>(null)
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('es-CO')

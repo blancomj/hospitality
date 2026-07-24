@@ -115,3 +115,39 @@ export async function getHostFinances(
   const result = rows as any;
   return result[0] as FinanceRecord[];
 }
+
+export interface HostReview {
+  review_id: number;
+  property_id: number;
+  property_title: string;
+  property_city: string;
+  booking_id: number;
+  start_date: string;
+  end_date: string;
+  rating: number;
+  comment: string | null;
+  host_reply: string | null;
+  is_unanswered: number;
+  created_at: string;
+  updated_at: string;
+  guest_name: string;
+  guest_avatar: string | null;
+}
+
+/**
+ * Reseñas de todas las propiedades del propietario.
+ *
+ * El aislamiento va por hostId, que el controlador toma del token y nunca de
+ * parámetros del cliente. Las sin responder salen primero.
+ */
+export async function getHostReviews(
+  hostId: number,
+  onlyUnanswered = false
+): Promise<HostReview[]> {
+  const [rows] = await pool.execute(
+    'CALL sp_get_host_reviews(?, ?)',
+    [hostId, onlyUnanswered ? 1 : 0]
+  );
+  const result = rows as any;
+  return result[0] as HostReview[];
+}

@@ -4,7 +4,7 @@
 -- ============================================
 
 -- Columna firebase_uid para login con Firebase Auth
-ALTER TABLE users ADD COLUMN firebase_uid VARCHAR(64) UNIQUE AFTER google_id;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS firebase_uid VARCHAR(64) UNIQUE AFTER google_id;
 CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
 
 -- Procedimiento upsert para Firebase Auth

@@ -6,7 +6,7 @@
   >
     <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md p-6">
       <h2 class="text-xl font-serif text-primary-700 mb-4">
-        {{ t('bookings.cancelTitle') }}
+        {{ t(txt.title) }}
       </h2>
 
       <!-- Cargando cotización -->
@@ -23,7 +23,7 @@
 
       <!-- Cotización -->
       <div v-else-if="quote" class="mb-6 space-y-4">
-        <p class="text-sm text-gray-600">{{ t('bookings.cancelWarning') }}</p>
+        <p class="text-sm text-gray-600">{{ t(txt.warning) }}</p>
 
         <div class="rounded-xl border border-cream-200 bg-cream-50 p-4 space-y-2 text-sm">
           <div class="flex justify-between">
@@ -56,19 +56,19 @@
           v-if="quote.refund_outcome === 'requires_approval'"
           class="text-xs text-gray-500 bg-gold-50 border border-gold-200 rounded-xl px-3 py-2"
         >
-          {{ t('bookings.refundRequiresApproval') }}
+          {{ t(txt.refundRequiresApproval) }}
         </p>
         <p
           v-else-if="quote.refund_outcome === 'not_eligible'"
           class="text-xs text-accent-800 bg-accent-50 border border-accent-200 rounded-xl px-3 py-2"
         >
-          {{ t('bookings.refundNotEligible') }}
+          {{ t(txt.refundNotEligible) }}
         </p>
         <p
           v-else
           class="text-xs text-gray-500 bg-cream-100 border border-cream-200 rounded-xl px-3 py-2"
         >
-          {{ t('bookings.refundNoPayment') }}
+          {{ t(txt.refundNoPayment) }}
         </p>
 
         <div>
@@ -80,7 +80,7 @@
             rows="2"
             maxlength="500"
             class="w-full px-3 py-2 border border-cream-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            :placeholder="t('bookings.cancelReasonPlaceholder')"
+            :placeholder="t(txt.cancelReasonPlaceholder)"
           />
         </div>
       </div>
@@ -128,9 +128,12 @@ interface CancellationQuote {
 interface Props {
   open: boolean
   bookingId: number | null
+  perspective?: 'guest' | 'host'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  perspective: 'guest',
+})
 
 const emit = defineEmits<{
   close: []
@@ -147,6 +150,26 @@ const isCancelling = ref(false)
 const reason = ref('')
 
 const refundIsZero = computed(() => Number(quote.value?.refund_amount ?? 0) === 0)
+
+const txt = computed(() =>
+  props.perspective === 'host'
+    ? {
+        title: 'bookings.cancelTitleHost',
+        warning: 'bookings.cancelWarningHost',
+        refundRequiresApproval: 'bookings.refundRequiresApprovalHost',
+        refundNotEligible: 'bookings.refundNotEligibleHost',
+        refundNoPayment: 'bookings.refundNoPaymentHost',
+        cancelReasonPlaceholder: 'bookings.cancelReasonPlaceholderHost',
+      }
+    : {
+        title: 'bookings.cancelTitle',
+        warning: 'bookings.cancelWarning',
+        refundRequiresApproval: 'bookings.refundRequiresApproval',
+        refundNotEligible: 'bookings.refundNotEligible',
+        refundNoPayment: 'bookings.refundNoPayment',
+        cancelReasonPlaceholder: 'bookings.cancelReasonPlaceholder',
+      }
+)
 
 const formatCOP = (amount: number): string =>
   new Intl.NumberFormat('es-CO', {

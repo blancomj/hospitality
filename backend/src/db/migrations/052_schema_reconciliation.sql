@@ -11,133 +11,325 @@
 -- Idempotente: usa DROP IF EXISTS / CREATE IF NOT EXISTS / information_schema.
 -- Seguro para ejecutar múltiples veces.
 -- ============================================
+-- ============================================
+-- NOTA (sesión 24 jul 2026): MariaDB no admite `IF ... THEN ... END IF`
+-- fuera de una rutina almacenada. Toda la lógica condicional de esta
+-- migración vive ahora dentro de un procedimiento temporal que se crea,
+-- se ejecuta y se elimina. El contenido es idéntico al original.
+-- ============================================
 
--- --------------------------------------------
--- 1. Reconstruir platform_settings si tiene el esquema viejo
--- --------------------------------------------
-SET @has_old_schema = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'platform_settings'
-    AND COLUMN_NAME = 'setting_key'
-);
+DROP PROCEDURE IF EXISTS _mig052_reconcile;
 
-SET @has_new_schema = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'platform_settings'
-    AND COLUMN_NAME = 'key_name'
-);
+DELIMITER //
 
--- Si tiene el esquema viejo (setting_key) pero no el nuevo (key_name),
--- reconstruir la tabla.
-IF @has_old_schema > 0 AND @has_new_schema = 0 THEN
-  -- Crear tabla temporal con el esquema nuevo
-  CREATE TABLE IF NOT EXISTS platform_settings_new (
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    key_name VARCHAR(100) NOT NULL,
-    value_text TEXT NULL,
-    value_number DECIMAL(10,2) NULL,
-    value_json JSON NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_platform_settings_key (key_name)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-  -- Copiar datos según el tipo
-  INSERT INTO platform_settings_new (key_name, value_text, value_number, value_json, created_at)
-  SELECT
-    setting_key,
-    CASE
-      WHEN value_type = 'string' THEN setting_value
-      ELSE NULL
-    END,
-    CASE
-      WHEN value_type = 'int' THEN CAST(setting_value AS DECIMAL(10,2))
-      WHEN value_type = 'decimal' THEN CAST(setting_value AS DECIMAL(10,2))
-      ELSE NULL
-    END,
-    CASE
-      WHEN value_type = 'json' THEN setting_value
-      ELSE NULL
-    END,
-    COALESCE(updated_at, CURRENT_TIMESTAMP)
-  FROM platform_settings;
-
-  -- Insertar valores por defecto si no existen
-  INSERT IGNORE INTO platform_settings_new (key_name, value_number) VALUES
-    ('default_commission_rate', 15.00),
-    ('booking_expiry_minutes', 15),
-    ('min_booking_nights', 1),
-    ('max_booking_nights', 365);
-
-  INSERT IGNORE INTO platform_settings_new (key_name, value_json) VALUES
-    ('cancellation_policies', '["flexible","moderada","estricta"]'),
-    ('enabled_cities', '["Medellín","Cartagena"]');
-
-  -- Eliminar FK obsoleta a users(updated_by) si existe
-  SET @fk_name = (
-    SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+CREATE PROCEDURE _mig052_reconcile()
+BEGIN
+  -- --------------------------------------------
+  -- 1. Reconstruir platform_settings si tiene el esquema viejo
+  -- --------------------------------------------
+  SET @has_old_schema = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME = 'platform_settings'
-      AND REFERENCED_TABLE_NAME = 'users'
-      AND REFERENCED_COLUMN_NAME = 'id'
-    LIMIT 1
+      AND COLUMN_NAME = 'setting_key'
   );
 
-  IF @fk_name IS NOT NULL THEN
-    SET @drop_fk = CONCAT('ALTER TABLE platform_settings DROP FOREIGN KEY `', @fk_name, '`');
-    PREPARE stmt FROM @drop_fk;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
+  SET @has_new_schema = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'platform_settings'
+      AND COLUMN_NAME = 'key_name'
+  );
+
+  -- Si tiene el esquema viejo (setting_key) pero no el nuevo (key_name),
+  -- reconstruir la tabla.
+  IF @has_old_schema > 0 AND @has_new_schema = 0 THEN
+    -- Crear tabla temporal con el esquema nuevo
+    CREATE TABLE IF NOT EXISTS platform_settings_new (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      key_name VARCHAR(100) NOT NULL,
+      value_text TEXT NULL,
+      value_number DECIMAL(10,2) NULL,
+      value_json JSON NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_platform_settings_key (key_name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    -- Copiar datos según el tipo
+    INSERT INTO platform_settings_new (key_name, value_text, value_number, value_json, created_at)
+    SELECT
+      setting_key,
+      CASE
+        WHEN value_type = 'string' THEN setting_value
+        ELSE NULL
+      END,
+      CASE
+        WHEN value_type = 'int' THEN CAST(setting_value AS DECIMAL(10,2))
+        WHEN value_type = 'decimal' THEN CAST(setting_value AS DECIMAL(10,2))
+        ELSE NULL
+      END,
+      CASE
+        WHEN value_type = 'json' THEN setting_value
+        ELSE NULL
+      END,
+      COALESCE(updated_at, CURRENT_TIMESTAMP)
+    FROM platform_settings;
+
+    -- Insertar valores por defecto si no existen
+    INSERT IGNORE INTO platform_settings_new (key_name, value_number) VALUES
+      ('default_commission_rate', 15.00),
+      ('booking_expiry_minutes', 15),
+      ('min_booking_nights', 1),
+      ('max_booking_nights', 365);
+
+    INSERT IGNORE INTO platform_settings_new (key_name, value_json) VALUES
+      ('cancellation_policies', '["flexible","moderada","estricta"]'),
+      ('enabled_cities', '["Medellín","Cartagena"]');
+
+    -- Eliminar FK obsoleta a users(updated_by) si existe
+    SET @fk_name = (
+      SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'platform_settings'
+        AND REFERENCED_TABLE_NAME = 'users'
+        AND REFERENCED_COLUMN_NAME = 'id'
+      LIMIT 1
+    );
+
+    IF @fk_name IS NOT NULL THEN
+      SET @drop_fk = CONCAT('ALTER TABLE platform_settings DROP FOREIGN KEY `', @fk_name, '`');
+      PREPARE stmt FROM @drop_fk;
+      EXECUTE stmt;
+      DEALLOCATE PREPARE stmt;
+    END IF;
+
+    -- Renombrar tablas
+    RENAME TABLE platform_settings TO platform_settings_old,
+                 platform_settings_new TO platform_settings;
+
+    -- Eliminar tabla vieja
+    DROP TABLE IF EXISTS platform_settings_old;
   END IF;
 
-  -- Renombrar tablas
-  RENAME TABLE platform_settings TO platform_settings_old,
-               platform_settings_new TO platform_settings;
+  -- Si no existe la tabla en absoluto, crearla con el esquema nuevo
+  SET @table_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'platform_settings'
+  );
 
-  -- Eliminar tabla vieja
-  DROP TABLE IF EXISTS platform_settings_old;
-END IF;
+  IF @table_exists = 0 THEN
+    CREATE TABLE platform_settings (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      key_name VARCHAR(100) NOT NULL,
+      value_text TEXT NULL,
+      value_number DECIMAL(10,2) NULL,
+      value_json JSON NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uk_platform_settings_key (key_name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Si no existe la tabla en absoluto, crearla con el esquema nuevo
-SET @table_exists = (
-  SELECT COUNT(*) FROM information_schema.TABLES
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'platform_settings'
-);
+    INSERT IGNORE INTO platform_settings (key_name, value_number) VALUES
+      ('default_commission_rate', 15.00),
+      ('booking_expiry_minutes', 15),
+      ('min_booking_nights', 1),
+      ('max_booking_nights', 365);
 
-IF @table_exists = 0 THEN
-  CREATE TABLE platform_settings (
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    key_name VARCHAR(100) NOT NULL,
-    value_text TEXT NULL,
-    value_number DECIMAL(10,2) NULL,
-    value_json JSON NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_platform_settings_key (key_name)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INSERT IGNORE INTO platform_settings (key_name, value_json) VALUES
+      ('cancellation_policies', '["flexible","moderada","estricta"]'),
+      ('enabled_cities', '["Medellín","Cartagena"]');
+  END IF;
 
-  INSERT IGNORE INTO platform_settings (key_name, value_number) VALUES
-    ('default_commission_rate', 15.00),
-    ('booking_expiry_minutes', 15),
-    ('min_booking_nights', 1),
-    ('max_booking_nights', 365);
+  -- Asegurar que max_booking_nights sea 365 (no 30)
+  UPDATE platform_settings
+  SET value_number = 365
+  WHERE key_name = 'max_booking_nights'
+    AND value_number IS NOT NULL
+    AND value_number <= 30;
 
-  INSERT IGNORE INTO platform_settings (key_name, value_json) VALUES
-    ('cancellation_policies', '["flexible","moderada","estricta"]'),
-    ('enabled_cities', '["Medellín","Cartagena"]');
-END IF;
 
--- Asegurar que max_booking_nights sea 365 (no 30)
-UPDATE platform_settings
-SET value_number = 365
-WHERE key_name = 'max_booking_nights'
-  AND value_number IS NOT NULL
-  AND value_number <= 30;
+  -- --------------------------------------------
+  -- 3. Asegurar columnas faltantes en properties
+  -- --------------------------------------------
+  -- country (referenciada por 5 vistas)
+  SET @has_country = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'properties'
+      AND COLUMN_NAME = 'country'
+  );
+
+  IF @has_country = 0 THEN
+    ALTER TABLE properties ADD COLUMN country VARCHAR(2) NULL DEFAULT 'CO' AFTER city;
+  END IF;
+
+  -- --------------------------------------------
+  -- 4. Asegurar columnas faltantes en property_photos
+  -- --------------------------------------------
+  -- image_url (la migración 007 original usaba 'url')
+  SET @has_image_url = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'property_photos'
+      AND COLUMN_NAME = 'image_url'
+  );
+
+  SET @has_url = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'property_photos'
+      AND COLUMN_NAME = 'url'
+  );
+
+  -- Si tiene 'url' pero no 'image_url', renombrar
+  IF @has_url > 0 AND @has_image_url = 0 THEN
+    ALTER TABLE property_photos CHANGE COLUMN url image_url VARCHAR(500) NOT NULL;
+  END IF;
+
+  -- Si no tiene ninguna, crear image_url
+  IF @has_url = 0 AND @has_image_url = 0 THEN
+    ALTER TABLE property_photos ADD COLUMN image_url VARCHAR(500) NOT NULL AFTER property_id;
+  END IF;
+
+  -- is_primary
+  SET @has_is_primary = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'property_photos'
+      AND COLUMN_NAME = 'is_primary'
+  );
+
+  IF @has_is_primary = 0 THEN
+    ALTER TABLE property_photos ADD COLUMN is_primary TINYINT(1) NOT NULL DEFAULT 0 AFTER image_url;
+    -- Marcar la primera foto de cada propiedad como portada
+    UPDATE property_photos pp
+    JOIN (
+      SELECT MIN(id) AS min_id FROM property_photos GROUP BY property_id
+    ) first ON pp.id = first.min_id
+    SET pp.is_primary = 1;
+  END IF;
+
+  -- --------------------------------------------
+  -- 5. Asegurar columnas faltantes en property_videos
+  -- --------------------------------------------
+  -- video_url (la migración 008 original usaba 'url')
+  SET @has_video_url = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'property_videos'
+      AND COLUMN_NAME = 'video_url'
+  );
+
+  SET @has_v_url = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'property_videos'
+      AND COLUMN_NAME = 'url'
+  );
+
+  IF @has_v_url > 0 AND @has_video_url = 0 THEN
+    ALTER TABLE property_videos CHANGE COLUMN url video_url VARCHAR(500) NOT NULL;
+  END IF;
+
+  IF @has_v_url = 0 AND @has_video_url = 0 THEN
+    ALTER TABLE property_videos ADD COLUMN video_url VARCHAR(500) NOT NULL AFTER property_id;
+  END IF;
+
+  -- --------------------------------------------
+  -- 6. Asegurar columnas faltantes en host_profiles
+  -- --------------------------------------------
+  -- custom_commission_rate (la migración 002 original usaba 'commission_rate')
+  SET @has_custom = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'host_profiles'
+      AND COLUMN_NAME = 'custom_commission_rate'
+  );
+
+  SET @has_old_commission = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'host_profiles'
+      AND COLUMN_NAME = 'commission_rate'
+  );
+
+  IF @has_old_commission > 0 AND @has_custom = 0 THEN
+    ALTER TABLE host_profiles CHANGE COLUMN commission_rate custom_commission_rate DECIMAL(5,2) NULL;
+  END IF;
+
+  IF @has_old_commission = 0 AND @has_custom = 0 THEN
+    ALTER TABLE host_profiles ADD COLUMN custom_commission_rate DECIMAL(5,2) NULL AFTER bank_account_type;
+  END IF;
+
+
+  -- --------------------------------------------
+  -- 8. Asegurar columnas en bookings (para migraciones anteriores)
+  -- --------------------------------------------
+  -- cancellation_reason, cancelled_by, cancelled_at (de la 038)
+  SET @has_cancel_reason = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'bookings'
+      AND COLUMN_NAME = 'cancellation_reason'
+  );
+
+  IF @has_cancel_reason = 0 THEN
+    ALTER TABLE bookings
+      ADD COLUMN cancellation_reason VARCHAR(500) NULL AFTER expires_at,
+      ADD COLUMN cancelled_by BIGINT UNSIGNED NULL AFTER cancellation_reason,
+      ADD COLUMN cancelled_at TIMESTAMP NULL AFTER cancelled_by;
+  END IF;
+
+  -- --------------------------------------------
+  -- 9. Asegurar columnas en payments (para migraciones anteriores)
+  -- --------------------------------------------
+  -- reference, refunded_amount (de la 051)
+  SET @has_ref = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND COLUMN_NAME = 'reference'
+  );
+
+  IF @has_ref = 0 THEN
+    ALTER TABLE payments ADD COLUMN reference VARCHAR(60) NULL AFTER booking_id;
+  END IF;
+
+  SET @has_refunded = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND COLUMN_NAME = 'refunded_amount'
+  );
+
+  IF @has_refunded = 0 THEN
+    ALTER TABLE payments ADD COLUMN refunded_amount DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER amount;
+  END IF;
+
+
+  -- --------------------------------------------
+  -- 13. Unique index en payments.reference
+  -- --------------------------------------------
+  SET @has_uq_ref = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'payments'
+      AND INDEX_NAME = 'uq_payments_reference'
+  );
+
+  IF @has_uq_ref = 0 THEN
+    ALTER TABLE payments ADD UNIQUE INDEX uq_payments_reference (reference);
+  END IF;
+END //
+
+DELIMITER ;
+
+CALL _mig052_reconcile();
+DROP PROCEDURE _mig052_reconcile;
 
 -- --------------------------------------------
 -- 2. Reconstruir fn_setting_int y fn_setting_decimal
@@ -185,118 +377,6 @@ END //
 
 DELIMITER ;
 
--- --------------------------------------------
--- 3. Asegurar columnas faltantes en properties
--- --------------------------------------------
--- country (referenciada por 5 vistas)
-SET @has_country = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'properties'
-    AND COLUMN_NAME = 'country'
-);
-
-IF @has_country = 0 THEN
-  ALTER TABLE properties ADD COLUMN country VARCHAR(2) NULL DEFAULT 'CO' AFTER city;
-END IF;
-
--- --------------------------------------------
--- 4. Asegurar columnas faltantes en property_photos
--- --------------------------------------------
--- image_url (la migración 007 original usaba 'url')
-SET @has_image_url = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'property_photos'
-    AND COLUMN_NAME = 'image_url'
-);
-
-SET @has_url = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'property_photos'
-    AND COLUMN_NAME = 'url'
-);
-
--- Si tiene 'url' pero no 'image_url', renombrar
-IF @has_url > 0 AND @has_image_url = 0 THEN
-  ALTER TABLE property_photos CHANGE COLUMN url image_url VARCHAR(500) NOT NULL;
-END IF;
-
--- Si no tiene ninguna, crear image_url
-IF @has_url = 0 AND @has_image_url = 0 THEN
-  ALTER TABLE property_photos ADD COLUMN image_url VARCHAR(500) NOT NULL AFTER property_id;
-END IF;
-
--- is_primary
-SET @has_is_primary = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'property_photos'
-    AND COLUMN_NAME = 'is_primary'
-);
-
-IF @has_is_primary = 0 THEN
-  ALTER TABLE property_photos ADD COLUMN is_primary TINYINT(1) NOT NULL DEFAULT 0 AFTER image_url;
-  -- Marcar la primera foto de cada propiedad como portada
-  UPDATE property_photos pp
-  JOIN (
-    SELECT MIN(id) AS min_id FROM property_photos GROUP BY property_id
-  ) first ON pp.id = first.min_id
-  SET pp.is_primary = 1;
-END IF;
-
--- --------------------------------------------
--- 5. Asegurar columnas faltantes en property_videos
--- --------------------------------------------
--- video_url (la migración 008 original usaba 'url')
-SET @has_video_url = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'property_videos'
-    AND COLUMN_NAME = 'video_url'
-);
-
-SET @has_v_url = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'property_videos'
-    AND COLUMN_NAME = 'url'
-);
-
-IF @has_v_url > 0 AND @has_video_url = 0 THEN
-  ALTER TABLE property_videos CHANGE COLUMN url video_url VARCHAR(500) NOT NULL;
-END IF;
-
-IF @has_v_url = 0 AND @has_video_url = 0 THEN
-  ALTER TABLE property_videos ADD COLUMN video_url VARCHAR(500) NOT NULL AFTER property_id;
-END IF;
-
--- --------------------------------------------
--- 6. Asegurar columnas faltantes en host_profiles
--- --------------------------------------------
--- custom_commission_rate (la migración 002 original usaba 'commission_rate')
-SET @has_custom = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'host_profiles'
-    AND COLUMN_NAME = 'custom_commission_rate'
-);
-
-SET @has_old_commission = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'host_profiles'
-    AND COLUMN_NAME = 'commission_rate'
-);
-
-IF @has_old_commission > 0 AND @has_custom = 0 THEN
-  ALTER TABLE host_profiles CHANGE COLUMN commission_rate custom_commission_rate DECIMAL(5,2) NULL;
-END IF;
-
-IF @has_old_commission = 0 AND @has_custom = 0 THEN
-  ALTER TABLE host_profiles ADD COLUMN custom_commission_rate DECIMAL(5,2) NULL AFTER bank_account_type;
-END IF;
 
 -- --------------------------------------------
 -- 7. Reconstruir v_search_properties
@@ -331,49 +411,6 @@ FROM properties p
 JOIN users u ON p.host_id = u.id
 WHERE p.status = 'published';
 
--- --------------------------------------------
--- 8. Asegurar columnas en bookings (para migraciones anteriores)
--- --------------------------------------------
--- cancellation_reason, cancelled_by, cancelled_at (de la 038)
-SET @has_cancel_reason = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'bookings'
-    AND COLUMN_NAME = 'cancellation_reason'
-);
-
-IF @has_cancel_reason = 0 THEN
-  ALTER TABLE bookings
-    ADD COLUMN cancellation_reason VARCHAR(500) NULL AFTER expires_at,
-    ADD COLUMN cancelled_by BIGINT UNSIGNED NULL AFTER cancellation_reason,
-    ADD COLUMN cancelled_at TIMESTAMP NULL AFTER cancelled_by;
-END IF;
-
--- --------------------------------------------
--- 9. Asegurar columnas en payments (para migraciones anteriores)
--- --------------------------------------------
--- reference, refunded_amount (de la 051)
-SET @has_ref = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'payments'
-    AND COLUMN_NAME = 'reference'
-);
-
-IF @has_ref = 0 THEN
-  ALTER TABLE payments ADD COLUMN reference VARCHAR(60) NULL AFTER booking_id;
-END IF;
-
-SET @has_refunded = (
-  SELECT COUNT(*) FROM information_schema.COLUMNS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'payments'
-    AND COLUMN_NAME = 'refunded_amount'
-);
-
-IF @has_refunded = 0 THEN
-  ALTER TABLE payments ADD COLUMN refunded_amount DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER amount;
-END IF;
 
 -- --------------------------------------------
 -- 10. Asegurar tabla refund_requests
@@ -416,17 +453,3 @@ ALTER TABLE payments
   MODIFY COLUMN status
     ENUM('pending','approved','declined','refunded','partially_refunded')
     NOT NULL DEFAULT 'pending';
-
--- --------------------------------------------
--- 13. Unique index en payments.reference
--- --------------------------------------------
-SET @has_uq_ref = (
-  SELECT COUNT(*) FROM information_schema.STATISTICS
-  WHERE TABLE_SCHEMA = DATABASE()
-    AND TABLE_NAME = 'payments'
-    AND INDEX_NAME = 'uq_payments_reference'
-);
-
-IF @has_uq_ref = 0 THEN
-  ALTER TABLE payments ADD UNIQUE INDEX uq_payments_reference (reference);
-END IF;

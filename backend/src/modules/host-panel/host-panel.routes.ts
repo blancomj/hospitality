@@ -6,6 +6,7 @@ import {
   getHostCalendarController,
   getHostBookingsController,
   getHostFinancesController,
+  getHostReviewsController,
 } from './host-panel.controller.js';
 
 const router = Router();
@@ -16,5 +17,6 @@ router.get('/host/dashboard', getHostDashboardController);
 router.get('/host/calendar', getHostCalendarController);
 router.get('/host/bookings', getHostBookingsController);
 router.get('/host/finances', getHostFinancesController);
+router.get('/host/reviews', getHostReviewsController);
 
 export default router;

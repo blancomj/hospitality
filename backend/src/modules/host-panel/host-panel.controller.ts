@@ -4,6 +4,7 @@ import {
   getHostCalendar,
   getHostBookings,
   getHostFinances,
+  getHostReviews,
 } from './host-panel.service.js';
 
 export async function getHostDashboardController(
@@ -85,7 +86,6 @@ export async function getHostFinancesController(
     const finances = await getHostFinances(userId, from, to);
 
     if (format === 'csv') {
-      // Generate CSV
       const headers = ['Propiedad', 'Ciudad', 'Check-in', 'Check-out', 'Bruto', 'Comisión', 'Neto', 'Estado'];
       const rows = finances.map(f => [
         f.property_title,
@@ -109,5 +109,26 @@ export async function getHostFinancesController(
   } catch (error) {
     console.error('Error fetching host finances:', error);
     res.status(500).json({ error: 'Error al obtener finanzas' });
+  }
+}
+
+export async function getHostReviewsController(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ error: 'Usuario no autenticado' });
+      return;
+    }
+
+    const onlyUnanswered = req.query.unanswered === 'true';
+
+    const reviews = await getHostReviews(userId, onlyUnanswered);
+    res.json({ reviews });
+  } catch (error) {
+    console.error('Error fetching host reviews:', error);
+    res.status(500).json({ error: 'Error al obtener reseñas' });
   }
 }

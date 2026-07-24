@@ -231,6 +231,13 @@
     "refundNoPayment": "No payment was recorded, so there is nothing to refund.",
     "cancelledRefundQueued": "Booking cancelled. The refund is under review.",
     "cancelledNoRefund": "Booking cancelled.",
+    "cancelTitleHost": "Cancel booking",
+    "cancelWarningHost": "By cancelling this booking, the guest will receive an email with the refund details according to the cancellation policy.",
+    "refundRequiresApprovalHost": "The refund to the guest is recorded and goes to our team for review. You will get an email once it is processed.",
+    "refundNotEligibleHost": "Under the property's policy, the guest is not entitled to a refund for cancelling on this date.",
+    "refundNoPaymentHost": "The guest hadn't paid yet, so there's no refund to process.",
+    "cancelReasonPlaceholderHost": "Tell the guest why you are cancelling. It is included in the email they receive.",
+    "refundToGuest": "Refund to guest",
     "refundStatusTitle": "Refund status",
     "refundStatus": {
       "pending": "Your refund request is under review.",
@@ -318,6 +325,7 @@
     "historyExportCSV": "History and export CSV",
     "bookingsSubtitle": "Manage all your property bookings",
     "propertyBookings": "My property bookings",
+    "cancelBooking": "Cancel booking",
     "guest": "Guest",
     "allBookings": "All",
     "upcomingBookings": "Upcoming",
@@ -497,7 +505,22 @@
       "synced": "Synced",
       "error": "Error",
       "pending": "Pending"
-    }
+    },
+    "reviews": "Reviews",
+    "reviewsSubtitle": "What your guests are saying. Replying to a review is the best way to earn the next booking.",
+    "reviewsAll": "All",
+    "reviewsUnanswered": "Unanswered",
+    "reviewsEmpty": "You don't have any reviews yet",
+    "reviewsEmptyHint": "They will show up here once a guest rates a completed stay.",
+    "reviewsAllAnswered": "No pending reviews",
+    "reviewsAllAnsweredHint": "You replied to all of them. Nicely done.",
+    "reviewsError": "Reviews could not be loaded",
+    "yourReply": "Your reply",
+    "replyPlaceholder": "Thank them for the visit and address what the guest mentioned. Your reply is public.",
+    "replyToReview": "Reply",
+    "publishReply": "Publish reply",
+    "replyPublished": "Reply published",
+    "replyError": "The reply could not be published"
   },
   "admin": {
     "dashboard": "Admin Panel",
@@ -565,7 +588,8 @@
         "rejected": "Rejected",
         "failed": "Failed"
       }
-    }
+    },
+    "queuesSubtitle": "Background job status"
   },
   "notifications": {
     "bookingConfirmed": "Booking confirmed",

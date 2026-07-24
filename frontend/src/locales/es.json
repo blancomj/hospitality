@@ -231,6 +231,13 @@
     "refundNoPayment": "No hay ningún pago registrado, así que no hay nada que reembolsar.",
     "cancelledRefundQueued": "Reserva cancelada. El reembolso quedó en revisión.",
     "cancelledNoRefund": "Reserva cancelada.",
+    "cancelTitleHost": "Cancelar reserva",
+    "cancelWarningHost": "Al cancelar esta reserva, el huésped recibirá un correo con los detalles del reembolso correspondiente según la política de cancelación.",
+    "refundRequiresApprovalHost": "El reembolso al huésped queda registrado y pasa a revisión del equipo. Recibirás un correo cuando se procese.",
+    "refundNotEligibleHost": "Según la política de la propiedad, al huésped no le corresponde reembolso por cancelar en esta fecha.",
+    "refundNoPaymentHost": "El huésped aún no había pagado, así que no hay reembolso que procesar.",
+    "cancelReasonPlaceholderHost": "Cuéntale al huésped por qué cancelas. Se incluye en el correo que recibe.",
+    "refundToGuest": "Reembolso al huésped",
     "refundStatusTitle": "Estado del reembolso",
     "refundStatus": {
       "pending": "Tu solicitud de reembolso está en revisión.",
@@ -318,6 +325,7 @@
     "historyExportCSV": "Historial y exportar CSV",
     "bookingsSubtitle": "Gestiona todas las reservas de tus propiedades",
     "propertyBookings": "Reservas de mis propiedades",
+    "cancelBooking": "Cancelar reserva",
     "guest": "Huésped",
     "allBookings": "Todas",
     "upcomingBookings": "Próximas",
@@ -497,7 +505,22 @@
       "synced": "Sincronizado",
       "error": "Error",
       "pending": "Pendiente"
-    }
+    },
+    "reviews": "Reseñas",
+    "reviewsSubtitle": "Lo que dicen tus huéspedes. Responder una reseña es la mejor forma de ganarte la siguiente reserva.",
+    "reviewsAll": "Todas",
+    "reviewsUnanswered": "Sin responder",
+    "reviewsEmpty": "Todavía no tienes reseñas",
+    "reviewsEmptyHint": "Aparecerán aquí cuando un huésped califique una estancia terminada.",
+    "reviewsAllAnswered": "No hay reseñas pendientes",
+    "reviewsAllAnsweredHint": "Respondiste todas. Bien hecho.",
+    "reviewsError": "No se pudieron cargar las reseñas",
+    "yourReply": "Tu respuesta",
+    "replyPlaceholder": "Agradece la visita y responde a lo que el huésped mencionó. Tu respuesta es pública.",
+    "replyToReview": "Responder",
+    "publishReply": "Publicar respuesta",
+    "replyPublished": "Respuesta publicada",
+    "replyError": "No se pudo publicar la respuesta"
   },
   "admin": {
     "dashboard": "Panel de Administración",
@@ -565,7 +588,8 @@
         "rejected": "Rechazadas",
         "failed": "Fallidas"
       }
-    }
+    },
+    "queuesSubtitle": "Estado de los trabajos en segundo plano"
   },
   "notifications": {
     "bookingConfirmed": "Reserva confirmada",

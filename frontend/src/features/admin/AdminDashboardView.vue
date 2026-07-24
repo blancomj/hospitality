@@ -129,6 +129,30 @@
             <h3 class="font-medium text-gray-900">{{ t('admin.settings') }}</h3>
             <p class="text-sm text-gray-500">{{ t('admin.platformSettings') }}</p>
           </router-link>
+          <router-link
+            to="/admin/refunds"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <RotateCcw class="w-8 h-8 text-accent-600 mb-3" />
+            <h3 class="font-medium text-gray-900">{{ t('admin.refunds.title') }}</h3>
+            <p class="text-sm text-gray-500">{{ t('admin.refunds.subtitle') }}</p>
+          </router-link>
+          <router-link
+            to="/admin/users"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <Users class="w-8 h-8 text-primary-600 mb-3" />
+            <h3 class="font-medium text-gray-900">{{ t('admin.users') }}</h3>
+            <p class="text-sm text-gray-500">{{ t('admin.usersSubtitle') }}</p>
+          </router-link>
+          <router-link
+            to="/admin/queues"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <ListChecks class="w-8 h-8 text-primary-600 mb-3" />
+            <h3 class="font-medium text-gray-900">{{ t('admin.queues') }}</h3>
+            <p class="text-sm text-gray-500">{{ t('admin.queuesSubtitle') }}</p>
+          </router-link>
         </div>
       </div>
     </div>
@@ -138,7 +162,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { UserCheck, DollarSign, BarChart, Settings } from 'lucide-vue-next'
+import { UserCheck, DollarSign, BarChart, Settings, RotateCcw, Users, ListChecks } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'

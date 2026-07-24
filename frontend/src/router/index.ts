@@ -127,6 +127,12 @@ const publicRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredRole: 'host' },
   },
   {
+    path: 'panel/reviews',
+    name: 'host-reviews',
+    component: () => import('@/features/host-panel/HostReviewsView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'host' },
+  },
+  {
     path: 'panel/payouts',
     name: 'host-payouts',
     component: () => import('@/features/payouts/PayoutsView.vue'),

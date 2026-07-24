@@ -53,14 +53,21 @@
         </div>
 
         <!-- Alerts -->
-        <div v-if="dashboard.unanswered_reviews > 0" class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <router-link
+          v-if="dashboard.unanswered_reviews > 0"
+          :to="`/${locale}/panel/reviews`"
+          class="flex items-center justify-between gap-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4 hover:bg-yellow-100 transition-colors"
+        >
           <p class="text-yellow-700">
             {{ dashboard.unanswered_reviews }} {{ t('hostPanel.unansweredReviews') }}
           </p>
-        </div>
+          <span class="text-sm font-medium text-yellow-800 shrink-0">
+            {{ t('hostPanel.replyToReview') }} &rarr;
+          </span>
+        </router-link>
 
         <!-- Quick links -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <router-link
             :to="`/${locale}/panel/properties`"
             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
@@ -86,6 +93,14 @@
             <p class="text-sm text-gray-500">{{ t('hostPanel.viewAllBookings') }}</p>
           </router-link>
           <router-link
+            :to="`/${locale}/panel/reviews`"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <Star class="w-8 h-8 text-primary-600 mb-3" />
+            <h3 class="font-medium text-gray-900">{{ t('hostPanel.reviews') }}</h3>
+            <p class="text-sm text-gray-500">{{ t('hostPanel.reviewsSubtitle') }}</p>
+          </router-link>
+          <router-link
             :to="`/${locale}/panel/finances`"
             class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
           >
@@ -103,7 +118,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { Calendar, BookOpen, DollarSign, Building } from 'lucide-vue-next'
+import { Calendar, BookOpen, DollarSign, Building, Star } from 'lucide-vue-next'
 import { useToast } from 'vue-toastification'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
