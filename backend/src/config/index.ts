@@ -33,6 +33,12 @@ interface Config {
     privateKey: string | undefined;
     baseUrl: string;
     webhookSecret: string | undefined;
+    /**
+     * Secreto de integridad. Distinto del secreto de eventos: éste firma el
+     * checkout (para que el monto no se pueda alterar desde el navegador),
+     * mientras que webhookSecret verifica los eventos entrantes.
+     */
+    integritySecret: string | undefined;
   };
   brevo: {
     apiKey: string | undefined;
@@ -80,6 +86,7 @@ export const config: Config = {
     privateKey: process.env.WOMPI_PRIVATE_KEY,
     baseUrl: process.env.WOMPI_BASE_URL || 'https://sandbox.wompi.co/v1',
     webhookSecret: process.env.WOMPI_WEBHOOK_SECRET,
+    integritySecret: process.env.WOMPI_INTEGRITY_SECRET,
   },
  
   brevo: {

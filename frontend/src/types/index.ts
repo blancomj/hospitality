@@ -151,7 +151,16 @@ export interface Booking {
   guests_count: number
   price_per_night: number
   total_amount: number
-  status: 'pending_payment' | 'confirmed' | 'cancelled' | 'completed'
+  status: 'pending_payment' | 'confirmed' | 'cancelled' | 'completed' | 'expired' | 'refunded'
+  /** Campos añadidos por la migración 051 (v_bookings_detail). */
+  can_be_paid?: boolean | number
+  payment_status?: string | null
+  payment_reference?: string | null
+  refunded_amount?: number | string | null
+  refund_request_id?: number | null
+  refund_request_status?: 'pending' | 'processing' | 'approved' | 'rejected' | 'failed' | null
+  refund_requested_amount?: number | string | null
+  property_cancellation_policy?: string
   expires_at: string | null
   cancellation_reason: string | null
   cancelled_by: number | null
@@ -207,12 +216,45 @@ export interface Payment {
 export interface PaymentIntent {
   payment_id: number
   booking_id: number
+  /** Monto en pesos, para mostrar. */
   amount: number
+  /** Monto en centavos: es lo que Wompi cobra y lo que va firmado. */
+  amount_in_cents: number
   reference: string
   currency: string
+  expires_at: string
+  /** SHA256(reference + amountInCents + currency + secreto), generado en el backend. */
+  integrity: string
+  redirect_url: string
 }
 
 export interface PaymentIntentResponse {
   paymentIntent: PaymentIntent
   publicKey: string
+}
+
+// ---------------------------------------------------------------------------
+// Disponibilidad
+//
+// Definición única y compartida. Antes cada componente declaraba la suya, y
+// divergían en los tipos: MySQL devuelve is_blocked como 0/1 y los DECIMAL
+// como string, no como boolean y number. Ese desajuste entre lo que la base
+// devuelve y lo que los tipos declaran es el mismo patrón que causó el bug de
+// "Propiedad no encontrada".
+// ---------------------------------------------------------------------------
+export interface AvailabilityOverride {
+  date: string
+  is_blocked?: boolean | number
+  special_price?: number | string | null
+}
+
+export interface AvailabilityBooking {
+  start_date: string
+  end_date: string
+  status: string
+}
+
+export interface Availability {
+  overrides: AvailabilityOverride[]
+  bookings: AvailabilityBooking[]
 }

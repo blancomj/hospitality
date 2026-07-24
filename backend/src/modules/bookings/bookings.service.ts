@@ -1,6 +1,9 @@
 import pool from '../../db/connection.js';
 import { BookingDetailView } from '../../types/index.js';
-import { sendBookingConfirmationEmails } from '../notifications/notifications.service.js';
+import {
+  sendBookingHoldEmail,
+  sendBookingCancelledEmails,
+} from '../notifications/notifications.service.js';
 
 export interface CreateBookingData {
   propertyId: number;
@@ -25,31 +28,35 @@ export const createBooking = async (data: CreateBookingData): Promise<any> => {
   const result = rows as any;
   const booking = result[0][0];
 
-  // Fetch full booking detail for email notification
+  // La reserva todavía NO está confirmada: está apartada y pendiente de pago.
+  // Enviar aquí el correo de "reserva confirmada" era incorrecto — el huésped
+  // lo recibía sin haber pagado, y no recibía nada al pagar de verdad.
+  // La confirmación (CU-24) se envía desde el webhook de Wompi.
   try {
-    const [detailRows] = await pool.execute<BookingDetailView[]>(
-      'SELECT * FROM v_bookings_detail WHERE booking_id = ?',
-      [booking.booking_id || booking.id]
-    );
-    const detail = detailRows[0];
-    if (detail) {
-      await sendBookingConfirmationEmails({
-        guestEmail: detail.guest_email,
-        guestName: detail.guest_name,
-        hostEmail: detail.host_email,
-        hostName: detail.host_name,
-        propertyTitle: detail.property_title,
-        checkIn: detail.start_date,
-        checkOut: detail.end_date,
-        totalAmount: detail.total_price,
-        bookingId: detail.booking_id,
-      });
-    }
-  } catch {
-    // Email failure must not block booking creation
+    await sendBookingHoldEmail(booking.booking_id || booking.id);
+  } catch (error) {
+    console.error('Fallo al enviar correo de reserva apartada:', error);
+    // Un fallo de correo no debe impedir que la reserva exista.
   }
 
   return booking;
+};
+
+/**
+ * Cotiza la cancelación sin ejecutarla: permite mostrar al huésped o al
+ * propietario cuánto se reembolsaría antes de que confirme.
+ */
+export const quoteCancellation = async (
+  bookingId: number,
+  userId: number
+): Promise<any> => {
+  const [rows] = await pool.execute(
+    'CALL sp_quote_cancellation(?, ?)',
+    [bookingId, userId]
+  );
+
+  const result = rows as any;
+  return result[0][0];
 };
 
 export const cancelBooking = async (
@@ -62,8 +69,19 @@ export const cancelBooking = async (
     [bookingId, userId, reason]
   );
 
-  const result = rows as any;
-  return result[0][0];
+  const result = (rows as any)[0][0];
+
+  try {
+    await sendBookingCancelledEmails(bookingId, {
+      refundAmount: Number(result.refund_amount ?? 0),
+      refundStatus: result.refund_status ?? 'none',
+      policyApplied: result.policy_applied ?? '',
+    });
+  } catch (error) {
+    console.error('Fallo al enviar correos de cancelación:', error);
+  }
+
+  return result;
 };
 
 export const getBookingById = async (bookingId: number): Promise<BookingDetailView | null> => {

@@ -98,23 +98,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-
-interface AvailabilityOverride {
-  date: string
-  is_blocked?: boolean
-  special_price?: number | null
-}
-
-interface AvailabilityBooking {
-  start_date: string
-  end_date: string
-  status: string
-}
-
-interface Availability {
-  overrides?: AvailabilityOverride[]
-  bookings?: AvailabilityBooking[]
-}
+import type { Availability } from '@/types'
 
 interface Props {
   availability?: Availability
@@ -128,8 +112,9 @@ const props = withDefaults(defineProps<Props>(), {
   endDate: null,
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'select-date': [payload: { startDate: string; endDate: string }]
+  'month-change': [payload: { year: number; month: number }]
 }>()
 
 const currentDate = new Date()
@@ -158,22 +143,33 @@ const isToday = (day: number): boolean => {
          currentYear.value === today.getFullYear()
 }
 
+/**
+ * Normaliza una fecha del backend a 'YYYY-MM-DD'.
+ *
+ * mysql2 convierte las columnas DATE en objetos Date, que al serializarse a
+ * JSON salen como '2026-07-23T05:00:00.000Z'. Comparar eso contra
+ * '2026-07-23' nunca coincide, así que los precios especiales y los bloqueos
+ * simplemente no se pintaban.
+ */
+const toDateKey = (value: unknown): string => String(value ?? '').substring(0, 10)
+
 const isBlocked = (day: number): boolean => {
   const date = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   
-  const override = props.availability.overrides?.find(o => o.date === date)
+  const override = props.availability.overrides?.find(o => toDateKey(o.date) === date)
   if (override?.is_blocked) return true
   
-  const booking = props.availability.bookings?.find(b => 
-    date >= b.start_date && date < b.end_date
+  const booking = props.availability.bookings?.find(
+    (b) => date >= toDateKey(b.start_date) && date < toDateKey(b.end_date)
   )
   return !!booking
 }
 
 const getSpecialPrice = (day: number): number | null => {
   const date = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  const override = props.availability.overrides?.find(o => o.date === date)
-  return override?.special_price || null
+  const override = props.availability.overrides?.find(o => toDateKey(o.date) === date)
+  const raw = override?.special_price
+  return raw == null ? null : Number(raw)
 }
 
 const getDayClass = (day: number): string => {
@@ -201,6 +197,7 @@ const prevMonth = () => {
   } else {
     currentMonth.value--
   }
+  emit('month-change', { year: currentYear.value, month: currentMonth.value + 1 })
 }
 
 const nextMonth = () => {
@@ -210,6 +207,7 @@ const nextMonth = () => {
   } else {
     currentMonth.value++
   }
+  emit('month-change', { year: currentYear.value, month: currentMonth.value + 1 })
 }
 
 const formatDate = (dateStr: string): string => {

@@ -34,7 +34,8 @@
     "status": "Estado",
     "property": "Propiedad",
     "today": "Hoy",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "retry": "Reintentar"
   },
   "nav": {
     "home": "Inicio",
@@ -198,7 +199,9 @@
       "pending_payment": "Pago pendiente",
       "confirmed": "Confirmada",
       "completed": "Completada",
-      "cancelled": "Cancelada"
+      "cancelled": "Cancelada",
+      "expired": "Caducada",
+      "refunded": "Reembolsada"
     },
     "actions": {
       "cancel": "Cancelar reserva",
@@ -209,7 +212,33 @@
     "cancelPolicy": "Política de cancelación",
     "guests": "Huéspedes",
     "nights": "Noches",
-    "total": "Total"
+    "total": "Total",
+    "created": "Reserva apartada. Completa el pago para confirmarla.",
+    "datesUnavailable": "Alguna de las fechas seleccionadas ya no está disponible.",
+    "specialPricing": "Ajuste por precios especiales",
+    "holdNotice": "Tu reserva se mantiene {minutes} minutos mientras completas el pago",
+    "loginToBook": "Inicia sesión para reservar",
+    "bookAgain": "Reservar de nuevo",
+    "cancelTitle": "¿Cancelar esta reserva?",
+    "cancelWarning": "Esta acción no se puede deshacer y las fechas quedarán disponibles para otros huéspedes.",
+    "cancelReason": "Motivo",
+    "cancelReasonPlaceholder": "Opcional, pero ayuda al anfitrión a entender qué pasó",
+    "keepBooking": "Mantener reserva",
+    "daysUntilCheckin": "Días para la llegada",
+    "refundAmount": "Reembolso",
+    "refundRequiresApproval": "El reembolso queda registrado y pasa a revisión del equipo. Recibirás un correo cuando se procese.",
+    "refundNotEligible": "Según la política de esta propiedad, cancelar ahora no genera reembolso.",
+    "refundNoPayment": "No hay ningún pago registrado, así que no hay nada que reembolsar.",
+    "cancelledRefundQueued": "Reserva cancelada. El reembolso quedó en revisión.",
+    "cancelledNoRefund": "Reserva cancelada.",
+    "refundStatusTitle": "Estado del reembolso",
+    "refundStatus": {
+      "pending": "Tu solicitud de reembolso está en revisión.",
+      "processing": "El reembolso se está procesando con la pasarela de pagos.",
+      "approved": "El reembolso fue aprobado y enviado a tu medio de pago. Puede tardar unos días hábiles en reflejarse.",
+      "rejected": "La solicitud de reembolso fue rechazada. Escríbenos si necesitas más detalles.",
+      "failed": "El reembolso no pudo procesarse. El equipo ya está al tanto y lo reintentará."
+    }
   },
   "payments": {
     "checkout": "Pago de reserva",
@@ -227,7 +256,19 @@
     "successDescription": "Tu reserva ha sido confirmada.",
     "failed": "Pago fallido",
     "failedDescription": "El pago no pudo ser procesado. Intenta de nuevo.",
-    "viewBooking": "Ver mi reserva"
+    "viewBooking": "Ver mi reserva",
+    "payNow": "Pagar ahora",
+    "completeToConfirm": "Completa el pago para confirmar tu reserva.",
+    "chargedInCOP": "El cobro se realiza en pesos colombianos (COP)",
+    "methodsAvailable": "Tarjeta, PSE, Nequi y Bancolombia",
+    "holdCountdown": "Tu reserva se libera en {time}",
+    "holdExpired": "El plazo para pagar esta reserva terminó y las fechas volvieron a estar disponibles.",
+    "widgetUnavailable": "No pudimos cargar la pasarela de pagos. Revisa tu conexión e inténtalo de nuevo.",
+    "pendingNotice": "Tu pago está en proceso. Te avisaremos cuando se confirme.",
+    "verifying": "Verificando tu pago",
+    "verifyingDescription": "Estamos confirmando la transacción con la pasarela. Esto suele tardar unos segundos.",
+    "stillPending": "Tu pago sigue en proceso",
+    "stillPendingDescription": "Algunos medios de pago, como PSE, tardan más en confirmarse. Te enviaremos un correo apenas quede lista tu reserva."
   },
   "favorites": {
     "title": "Mis Favoritos",
@@ -500,7 +541,31 @@
     "noResultsDescription": "No se encontraron usuarios con los filtros seleccionados.",
     "platformSettingsTitle": "Configuración de la plataforma",
     "platformSettingsSubtitle": "Administra los ajustes generales del sistema",
-    "lastUpdated": "Última actualización"
+    "lastUpdated": "Última actualización",
+    "refunds": {
+      "title": "Solicitudes de reembolso",
+      "subtitle": "Revisa y aprueba los reembolsos generados por cancelaciones.",
+      "all": "Todas",
+      "empty": "No hay solicitudes",
+      "emptyDescription": "Las cancelaciones con reembolso aparecerán aquí para su revisión.",
+      "approve": "Aprobar y reembolsar",
+      "reject": "Rechazar",
+      "approved": "Reembolso enviado a la pasarela",
+      "rejected": "Solicitud rechazada",
+      "approveConfirm": "Se enviarán {amount} a {guest}. Esta acción mueve dinero real y no se puede deshacer. ¿Continuar?",
+      "rejectTitle": "Rechazar solicitud",
+      "rejectHint": "El motivo queda registrado en la auditoría y ayuda a resolver reclamos posteriores.",
+      "rejectPlaceholder": "Motivo del rechazo",
+      "requestedAt": "Solicitado",
+      "reviewedBy": "Revisado por {name}",
+      "status": {
+        "pending": "Pendientes",
+        "processing": "En proceso",
+        "approved": "Aprobadas",
+        "rejected": "Rechazadas",
+        "failed": "Fallidas"
+      }
+    }
   },
   "notifications": {
     "bookingConfirmed": "Reserva confirmada",

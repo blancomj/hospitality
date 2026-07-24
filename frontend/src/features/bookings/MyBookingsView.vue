@@ -40,7 +40,8 @@
           v-for="booking in filteredBookings"
           :key="booking.booking_id"
           :booking="booking"
-          @cancel="handleCancelBooking"
+          @cancel="openCancelDialog"
+          @pay="goToPayment"
         />
       </div>
 
@@ -57,28 +58,39 @@
         </template>
       </EmptyState>
     </div>
+
+    <CancelBookingDialog
+      :open="cancelDialogOpen"
+      :booking-id="bookingToCancel"
+      @close="cancelDialogOpen = false"
+      @cancelled="fetchBookings"
+    />
   </AppShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
 import BookingCard from './BookingCard.vue'
+import CancelBookingDialog from './CancelBookingDialog.vue'
 import { Booking } from '@/types'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const toast = useToast()
 
 const locale = computed(() => (route.params.locale as string) || 'es')
 const bookings = ref<Booking[]>([])
 const isLoading = ref(true)
 const activeTab = ref('upcoming')
+const cancelDialogOpen = ref(false)
+const bookingToCancel = ref<number | null>(null)
 
 const tabs = computed(() => [
   { value: 'upcoming', label: t('bookings.upcoming') },
@@ -86,27 +98,26 @@ const tabs = computed(() => [
   { value: 'cancelled', label: t('bookings.cancelled') },
 ])
 
-const filteredBookings = computed(() => {
-  const now = new Date()
-  return bookings.value.filter(booking => {
-    if (activeTab.value === 'cancelled') {
-      return booking.status === 'cancelled'
-    }
-    if (activeTab.value === 'upcoming') {
-      return new Date(booking.end_date) >= now && booking.status !== 'cancelled'
-    }
-    return new Date(booking.end_date) < now && booking.status !== 'cancelled'
-  })
-})
+// 'expired' y 'refunded' son estados nuevos (migración 051). Sin incluirlos
+// aquí, una reserva caducada no aparecía en ninguna pestaña y el huésped la
+// veía desaparecer sin explicación.
+const CLOSED_STATUSES = ['cancelled', 'expired', 'refunded']
 
-const getTabCount = (tab: string): number => {
-  const now = new Date()
-  return bookings.value.filter(booking => {
-    if (tab === 'cancelled') return booking.status === 'cancelled'
-    if (tab === 'upcoming') return new Date(booking.end_date) >= now && booking.status !== 'cancelled'
-    return new Date(booking.end_date) < now && booking.status !== 'cancelled'
-  }).length
+const matchesTab = (booking: Booking, tab: string): boolean => {
+  const isClosed = CLOSED_STATUSES.includes(booking.status)
+  if (tab === 'cancelled') return isClosed
+  if (isClosed) return false
+
+  const ended = new Date(`${String(booking.end_date).substring(0, 10)}T00:00:00`) < new Date()
+  return tab === 'upcoming' ? !ended : ended
 }
+
+const filteredBookings = computed(() =>
+  bookings.value.filter((booking) => matchesTab(booking, activeTab.value))
+)
+
+const getTabCount = (tab: string): number =>
+  bookings.value.filter((booking) => matchesTab(booking, tab)).length
 
 const fetchBookings = async () => {
   isLoading.value = true
@@ -121,17 +132,18 @@ const fetchBookings = async () => {
   }
 }
 
-const handleCancelBooking = async (bookingId: number) => {
-  try {
-    await api.post(`/bookings/${bookingId}/cancel`, {
-      reason: 'Cancelado por el usuario'
-    })
-    toast.success(t('bookings.status.cancelled'))
-    fetchBookings()
-  } catch (error: any) {
-    const message = error.response?.data?.error || t('errors.generic')
-    toast.error(message)
-  }
+// Cancelar abre el diálogo en vez de ejecutar de inmediato: el huésped debe
+// ver cuánto se le reembolsará según la política antes de confirmar.
+const openCancelDialog = (bookingId: number) => {
+  bookingToCancel.value = bookingId
+  cancelDialogOpen.value = true
+}
+
+const goToPayment = (bookingId: number) => {
+  router.push({
+    name: 'payment',
+    params: { locale: locale.value, bookingId },
+  })
 }
 
 onMounted(() => {

@@ -95,11 +95,55 @@
           </p>
         </div>
 
-        <!-- Actions -->
+        <!-- Estado del reembolso -->
+        <div
+          v-if="booking.refund_request_status"
+          class="card p-6 border-gold-200 bg-gold-50/40"
+        >
+          <h2 class="text-lg font-semibold text-primary-700 mb-2">
+            {{ t('bookings.refundStatusTitle') }}
+          </h2>
+          <p class="text-gray-700 text-sm">
+            {{ t(`bookings.refundStatus.${booking.refund_request_status}`) }}
+          </p>
+          <p v-if="booking.refund_requested_amount" class="text-sm text-gray-500 mt-2">
+            {{ t('bookings.refundAmount') }}:
+            <strong>{{ formatCOP(Number(booking.refund_requested_amount)) }}</strong>
+          </p>
+        </div>
+
+        <!-- Pago pendiente: la pre-reserva caduca, así que esto va primero -->
+        <div
+          v-if="showPayButton"
+          class="card p-6 border-accent-200 bg-accent-50/40 space-y-3"
+        >
+          <p class="text-sm text-accent-900">
+            {{ t('payments.holdCountdown', { time: countdownLabel }) }}
+          </p>
+          <button
+            class="w-full py-3 bg-accent-700 hover:bg-accent-800 text-white font-medium rounded-xl transition-colors"
+            @click="goToPayment"
+          >
+            {{ t('bookings.actions.pay') }}
+          </button>
+        </div>
+
+        <!-- Pre-reserva caducada -->
+        <div
+          v-else-if="booking.status === 'expired'"
+          class="card p-6 border-gray-200"
+        >
+          <p class="text-sm text-gray-600 mb-3">{{ t('payments.holdExpired') }}</p>
+          <button class="btn-primary w-full" @click="goToProperty">
+            {{ t('bookings.bookAgain') }}
+          </button>
+        </div>
+
+        <!-- Acciones -->
         <div v-if="booking.can_be_cancelled" class="flex gap-3">
           <button
-            @click="showCancelModal = true"
             class="flex-1 py-3 border-2 border-red-500 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
+            @click="showCancelModal = true"
           >
             {{ t('bookings.actions.cancel') }}
           </button>
@@ -119,59 +163,39 @@
         </template>
       </EmptyState>
 
-      <!-- Cancel modal -->
-      <div
-        v-if="showCancelModal"
-        class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-        @click.self="showCancelModal = false"
-      >
-        <div class="bg-white rounded-2xl max-w-md w-full p-6">
-          <h3 class="text-xl font-semibold text-gray-900 mb-4">{{ t('bookings.actions.cancel') }}</h3>
-          <p class="text-gray-600 mb-4">
-            {{ t('bookings.cancelPolicy') }}
-          </p>
-          <div class="flex gap-3">
-            <button
-              @click="showCancelModal = false"
-              class="flex-1 py-2 border border-gray-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50"
-            >
-              {{ t('common.cancel') }}
-            </button>
-            <button
-              @click="handleCancel"
-              :disabled="isCancelling"
-              class="flex-1 py-2 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 disabled:opacity-50"
-            >
-              {{ isCancelling ? t('common.loading') : t('common.confirm') }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <CancelBookingDialog
+        :open="showCancelModal"
+        :booking-id="booking?.booking_id ?? null"
+        @close="showCancelModal = false"
+        @cancelled="fetchBooking"
+      />
     </div>
   </AppShell>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
-import { useToast } from 'vue-toastification'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
 import AppShell from '@/components/base/AppShell.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
+import CancelBookingDialog from './CancelBookingDialog.vue'
 import { Booking } from '@/types'
 
 const { t } = useI18n()
 const route = useRoute()
-const toast = useToast()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const locale = computed(() => (route.params.locale as string) || 'es')
 const booking = ref<Booking | null>(null)
 const isLoading = ref(true)
 const showCancelModal = ref(false)
-const isCancelling = ref(false)
+const secondsLeft = ref(0)
+
+let countdownTimer: ReturnType<typeof setInterval> | undefined
 
 const isHost = computed(() => {
   return authStore.user?.role === 'host' || authStore.user?.role === 'admin'
@@ -184,20 +208,72 @@ const statusClasses = computed(() => {
     confirmed: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
     completed: 'bg-blue-100 text-blue-800',
+    expired: 'bg-gray-200 text-gray-700',
+    refunded: 'bg-purple-100 text-purple-800',
   }
   return classes[booking.value.status] || 'bg-gray-100 text-gray-800'
 })
 
 const statusLabel = computed(() => {
   if (!booking.value) return ''
-  const labels: Record<string, string> = {
-    pending_payment: t('bookings.status.pending_payment'),
-    confirmed: t('bookings.status.confirmed'),
-    cancelled: t('bookings.status.cancelled'),
-    completed: t('bookings.status.completed'),
-  }
-  return labels[booking.value.status] || booking.value.status
+  return t(`bookings.status.${booking.value.status}`, booking.value.status)
 })
+
+const showPayButton = computed(
+  () =>
+    booking.value?.status === 'pending_payment' &&
+    Boolean(booking.value?.can_be_paid) &&
+    secondsLeft.value > 0
+)
+
+const countdownLabel = computed(() => {
+  const minutes = Math.floor(secondsLeft.value / 60)
+  const seconds = secondsLeft.value % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+})
+
+const formatCOP = (amount: number): string =>
+  new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  }).format(amount)
+
+// La cuenta regresiva se calcula contra expires_at del servidor, no contra un
+// contador local, para que recargar la página no reinicie el plazo.
+const startCountdown = (expiresAt: string | null) => {
+  if (countdownTimer) clearInterval(countdownTimer)
+  if (!expiresAt) {
+    secondsLeft.value = 0
+    return
+  }
+
+  const deadline = new Date(expiresAt).getTime()
+  const tick = () => {
+    secondsLeft.value = Math.max(0, Math.round((deadline - Date.now()) / 1000))
+    if (secondsLeft.value === 0 && countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = undefined
+    }
+  }
+
+  tick()
+  countdownTimer = setInterval(tick, 1000)
+}
+
+const goToPayment = () => {
+  router.push({
+    name: 'payment',
+    params: { locale: locale.value, bookingId: booking.value?.booking_id },
+  })
+}
+
+const goToProperty = () => {
+  router.push({
+    name: 'property-detail',
+    params: { locale: locale.value, id: booking.value?.property_id },
+  })
+}
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr + 'T00:00:00')
@@ -226,6 +302,10 @@ const fetchBooking = async () => {
     const id = route.params.id
     const response = await api.get(`/bookings/${id}`)
     booking.value = response.data.booking
+
+    if (booking.value?.status === 'pending_payment') {
+      startCountdown(booking.value.expires_at)
+    }
   } catch (error) {
     console.error('Error fetching booking:', error)
     booking.value = null
@@ -234,26 +314,11 @@ const fetchBooking = async () => {
   }
 }
 
-const handleCancel = async () => {
-  if (!booking.value) return
-  
-  isCancelling.value = true
-  try {
-    await api.post(`/bookings/${booking.value.booking_id}/cancel`, {
-      reason: 'Cancelado por el usuario'
-    })
-    toast.success(t('bookings.status.cancelled'))
-    showCancelModal.value = false
-    fetchBooking()
-  } catch (error: any) {
-    const message = error.response?.data?.error || 'Error al cancelar reserva'
-    toast.error(message)
-  } finally {
-    isCancelling.value = false
-  }
-}
-
 onMounted(() => {
   fetchBooking()
+})
+
+onUnmounted(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
 })
 </script>

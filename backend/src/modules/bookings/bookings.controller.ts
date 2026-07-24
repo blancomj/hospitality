@@ -92,6 +92,34 @@ export const getPropertyBookings = async (req: Request, res: Response): Promise<
   }
 };
 
+export const getCancellationQuote = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const bookingId = parseInt(req.params.id as string, 10);
+
+    if (Number.isNaN(bookingId)) {
+      res.status(400).json({ error: 'ID de reserva inválido' });
+      return;
+    }
+
+    const quote = await bookingsService.quoteCancellation(bookingId, req.user!.id);
+    res.json({ quote });
+  } catch (error) {
+    const errorMessage = (error as any).message || '';
+
+    if (errorMessage.includes('not found')) {
+      res.status(404).json({ error: 'Reserva no encontrada' });
+      return;
+    }
+    if (errorMessage.includes('Unauthorized')) {
+      res.status(403).json({ error: 'No tienes acceso a esta reserva' });
+      return;
+    }
+
+    console.error('Error en getCancellationQuote:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 export const cancelBookingController = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;

@@ -118,40 +118,13 @@
 
         <!-- Columna derecha - Barra de reserva sticky -->
         <div class="lg:col-span-1">
-          <div class="sticky top-24 bg-white rounded-2xl shadow-soft border border-cream-200 p-6">
-            <!-- Precio -->
-            <div class="flex items-baseline gap-2 mb-6">
-              <span class="text-3xl font-bold text-gray-900">{{ formatPrice(property.base_price_per_night) }}</span>
-              <span class="text-gray-500">{{ t('property.perNight') }}</span>
-            </div>
-
-            <!-- Calendario -->
-            <AvailabilityCalendar 
+          <div class="sticky top-24">
+            <BookingForm
+              :property="property"
               :availability="availability"
-              :start-date="bookingDates.startDate"
-              :end-date="bookingDates.endDate"
-              @select-date="handleDateSelect"
-              class="mb-6"
+              :expiry-minutes="expiryMinutes"
+              @month-change="loadAvailability"
             />
-
-            <!-- Botón de reserva -->
-            <button 
-              class="w-full py-3 bg-accent-700 hover:bg-accent-800 text-white font-medium rounded-xl transition-colors"
-            >
-              {{ t('property.reserve') }}
-            </button>
-
-            <!-- Desglose -->
-            <div v-if="bookingDates.startDate && bookingDates.endDate" class="mt-4 space-y-3 text-sm">
-              <div class="flex justify-between">
-                <span class="text-gray-600">{{ formatPrice(property.base_price_per_night) }} x {{ nights }} {{ nights === 1 ? t('property.night') : t('property.nights') }}</span>
-                <span class="text-gray-900">{{ formatPrice(property.base_price_per_night * nights) }}</span>
-              </div>
-              <div class="flex justify-between font-medium text-lg pt-3 border-t border-cream-200">
-                <span>{{ t('property.total') }}</span>
-                <span>{{ formatPrice(property.base_price_per_night * nights) }}</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -180,56 +153,81 @@ import AppShell from '@/components/base/AppShell.vue'
 import PropertyGallery from '@/components/property/PropertyGallery.vue'
 import PropertyMap from '@/components/property/PropertyMap.vue'
 import AmenitiesSection from '@/components/property/AmenitiesSection.vue'
-import AvailabilityCalendar from '@/components/property/AvailabilityCalendar.vue'
+import BookingForm from '@/features/bookings/BookingForm.vue'
 import EmptyState from '@/components/base/EmptyState.vue'
-import { useCurrency } from '@/composables/useCurrency'
-import { Property } from '@/types'
-
-interface Availability {
-  overrides: any[]
-  bookings: any[]
-}
+import type { Property, Availability } from '@/types'
 
 const route = useRoute()
 const { t } = useI18n()
-const { formatPrice } = useCurrency()
 
 const locale = computed(() => (route.params.locale as string) || 'es')
 const property = ref<Property | null>(null)
 const availability = ref<Availability>({ overrides: [], bookings: [] })
 const isLoading = ref(true)
+const expiryMinutes = ref(15)
 
-const bookingDates = ref({
-  startDate: null as string | null,
-  endDate: null as string | null,
-})
+// Meses ya consultados. El endpoint devuelve un mes por llamada, así que la
+// disponibilidad se acumula: antes sólo se cargaba el mes actual y el
+// calendario mostraba libres todas las fechas ocupadas del mes siguiente.
+const loadedMonths = new Set<string>()
 
-const nights = computed(() => {
-  if (!bookingDates.value.startDate || !bookingDates.value.endDate) return 0
-  const start = new Date(bookingDates.value.startDate)
-  const end = new Date(bookingDates.value.endDate)
-  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-})
+const loadAvailability = async (payload?: { year: number; month: number }) => {
+  const now = new Date()
+  const year = payload?.year ?? now.getFullYear()
+  const month = payload?.month ?? now.getMonth() + 1
+  const key = `${year}-${String(month).padStart(2, '0')}`
 
-const handleDateSelect = ({ startDate, endDate }: { startDate: string; endDate: string }) => {
-  bookingDates.value = { startDate, endDate }
+  if (loadedMonths.has(key)) return
+  loadedMonths.add(key)
+
+  try {
+    const { data } = await api.get(
+      `/properties/${route.params.id}/availability?month=${key}`
+    )
+
+    availability.value = {
+      overrides: [...availability.value.overrides, ...(data.overrides ?? [])],
+      bookings: [...availability.value.bookings, ...(data.bookings ?? [])],
+    }
+  } catch (error) {
+    // Un mes que no carga no debe romper la ficha; el backend sigue siendo
+    // la autoridad sobre disponibilidad al crear la reserva.
+    loadedMonths.delete(key)
+    console.error('Error cargando disponibilidad:', error)
+  }
 }
 
 onMounted(async () => {
   try {
-    const propertyId = route.params.id
-
-    const propResponse = await api.get(`/properties/${propertyId}?locale=${locale.value}`)
+    const propResponse = await api.get(
+      `/properties/${route.params.id}?locale=${locale.value}`
+    )
     property.value = propResponse.data.property
-
-    const month = new Date().toISOString().substring(0, 7)
-    const availResponse = await api.get(`/properties/${propertyId}/availability?month=${month}`)
-    availability.value = availResponse.data
   } catch (error) {
     console.error('Error loading property:', error)
     property.value = null
-  } finally {
     isLoading.value = false
+    return
   }
+
+  isLoading.value = false
+
+  // El plazo de la pre-reserva lo define el administrador en platform_settings.
+  // Mostrarlo fijo en 15 minutos hacía que el aviso mintiera si se cambiaba.
+  api
+    .get('/settings/public')
+    .then(({ data }) => {
+      const minutes = Number(data?.settings?.booking_expiry_minutes)
+      if (Number.isFinite(minutes) && minutes > 0) expiryMinutes.value = minutes
+    })
+    .catch(() => {
+      /* se mantiene el valor por defecto */
+    })
+
+  // Precargar el mes actual y el siguiente: es lo que el huésped mira primero.
+  const now = new Date()
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  await loadAvailability({ year: now.getFullYear(), month: now.getMonth() + 1 })
+  await loadAvailability({ year: next.getFullYear(), month: next.getMonth() + 1 })
 })
 </script>

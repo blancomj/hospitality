@@ -18,6 +18,53 @@ import {
 
 const router = Router();
 
+/**
+ * Ajustes públicos.
+ *
+ * Va ANTES del guard de /admin y expone únicamente las claves de esta lista.
+ * platform_settings contiene también comisiones y parámetros internos, así
+ * que devolver la tabla completa sin filtrar sería una fuga de negocio.
+ */
+const PUBLIC_SETTING_KEYS = [
+  'booking_expiry_minutes',
+  'min_booking_nights',
+  'max_booking_nights',
+  'enabled_cities',
+  'cancellation_policies',
+];
+
+router.get('/settings/public', async (_req, res) => {
+  try {
+    const placeholders = PUBLIC_SETTING_KEYS.map(() => '?').join(',');
+    const [rows] = await pool.execute(
+      `SELECT setting_key, setting_value, value_type
+       FROM platform_settings
+       WHERE setting_key IN (${placeholders})`,
+      PUBLIC_SETTING_KEYS
+    );
+
+    const settings: Record<string, unknown> = {};
+    for (const row of rows as any[]) {
+      const raw = row.setting_value;
+      settings[row.setting_key] =
+        row.value_type === 'int'
+          ? parseInt(raw, 10)
+          : row.value_type === 'decimal'
+            ? parseFloat(raw)
+            : row.value_type === 'bool'
+              ? raw === '1' || raw === 'true'
+              : row.value_type === 'json'
+                ? JSON.parse(raw)
+                : raw;
+    }
+
+    res.json({ settings });
+  } catch (error) {
+    console.error('Error obteniendo ajustes públicos:', error);
+    res.status(500).json({ error: 'Error al obtener la configuración' });
+  }
+});
+
 router.use('/admin', authenticate, requireRole('admin'));
 
 router.get('/admin/dashboard', getAdminDashboardController);

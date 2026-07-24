@@ -3,12 +3,15 @@ import { z } from 'zod';
 import {
   createPaymentIntent,
   processWebhook,
-  refundBooking,
+  refundBookingManually,
   expirePendingPayments,
 } from './payments.service.js';
 
 const createPaymentIntentSchema = z.object({
   bookingId: z.number().int().positive(),
+  // Lista cerrada a propósito: este valor termina en una URL de retorno, así
+  // que no puede venir libre desde el cliente.
+  locale: z.enum(['es', 'en']).default('es'),
 });
 
 export async function createPaymentIntentController(
@@ -22,9 +25,9 @@ export async function createPaymentIntentController(
       return;
     }
 
-    const { bookingId } = createPaymentIntentSchema.parse(req.body);
+    const { bookingId, locale } = createPaymentIntentSchema.parse(req.body);
 
-    const result = await createPaymentIntent(bookingId, userId);
+    const result = await createPaymentIntent(bookingId, userId, locale);
 
     res.json({
       paymentIntent: result,
@@ -84,19 +87,25 @@ export async function refundBookingController(
       return;
     }
 
-    const { refundAmount } = req.body;
+    const { refundAmount, reason } = req.body;
 
     if (typeof refundAmount !== 'number' || refundAmount <= 0) {
       res.status(400).json({ error: 'Monto de reembolso inválido' });
       return;
     }
 
-    const result = await refundBooking(bookingId, refundAmount);
+    const result = await refundBookingManually(
+      bookingId,
+      userId,
+      refundAmount,
+      typeof reason === 'string' ? reason.slice(0, 500) : 'Reembolso manual de administración'
+    );
 
     res.json({
       message: 'Reembolso procesado exitosamente',
+      refundRequestId: result.refundRequestId,
       refundId: result.wompiRefundId,
-      refundAmount: result.refundAmount,
+      refundAmount,
     });
   } catch (error) {
     console.error('Error processing refund:', error);

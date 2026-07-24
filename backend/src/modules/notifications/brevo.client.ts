@@ -48,6 +48,12 @@ export const sendTransactionalEmail = async (params: SendEmailParams): Promise<b
 
 // Template IDs (configurar en panel de Brevo)
 export const EMAIL_TEMPLATES = {
+  /**
+   * Reserva apartada, pendiente de pago. Es un correo distinto al de
+   * confirmación: se envía al crear la pre-reserva e indica el plazo para
+   * pagar. Crear esta plantilla en Brevo y fijar BREVO_TEMPLATE_BOOKING_HOLD.
+   */
+  BOOKING_HOLD_GUEST: parseInt(process.env.BREVO_TEMPLATE_BOOKING_HOLD || '8'),
   BOOKING_CONFIRMED_GUEST: parseInt(process.env.BREVO_TEMPLATE_BOOKING_GUEST || '1'),
   BOOKING_CONFIRMED_HOST: parseInt(process.env.BREVO_TEMPLATE_BOOKING_HOST || '2'),
   PAYOUT_EXECUTED: parseInt(process.env.BREVO_TEMPLATE_PAYOUT || '3'),

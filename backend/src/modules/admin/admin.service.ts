@@ -309,10 +309,12 @@ export async function forceCancelBooking(
     [reason, adminId, bookingId]
   );
 
-  // If refund amount specified, process refund
+  // Si se indicó un monto, el reembolso pasa por Wompi de verdad.
+  // La versión anterior sólo cambiaba estados en la base: la reserva quedaba
+  // marcada como reembolsada y el dinero nunca salía de la cuenta.
   if (refundAmount && refundAmount > 0) {
-    const { processRefund } = await import('../payments/payments.service.js');
-    await processRefund(bookingId, refundAmount);
+    const { refundBookingManually } = await import('../payments/payments.service.js');
+    await refundBookingManually(bookingId, adminId, refundAmount, reason);
   }
 
   await pool.execute(

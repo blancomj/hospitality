@@ -61,6 +61,12 @@ const publicRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: 'bookings/:bookingId/payment-result',
+    name: 'payment-result',
+    component: () => import('@/features/payments/PaymentResultView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: 'bookings/:bookingId/payment-success',
     name: 'payment-success',
     component: () => import('@/features/payments/PaymentSuccessView.vue'),
@@ -151,6 +157,12 @@ const adminRoutes: RouteRecordRaw[] = [
     path: 'payouts',
     name: 'admin-payouts',
     component: () => import('@/features/admin/AdminPayoutsView.vue'),
+    meta: { requiresAuth: true, requiredRole: 'admin' },
+  },
+  {
+    path: 'refunds',
+    name: 'admin-refunds',
+    component: () => import('@/features/admin/AdminRefundsView.vue'),
     meta: { requiresAuth: true, requiredRole: 'admin' },
   },
   {

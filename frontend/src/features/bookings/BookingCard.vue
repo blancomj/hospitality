@@ -51,13 +51,23 @@
         <span class="text-lg font-bold text-gray-900">${{ formatPrice(booking.total_amount) }}</span>
       </div>
 
-      <!-- Actions -->
-      <div v-if="booking.can_be_cancelled" class="mt-3">
+      <!-- Acciones -->
+      <div v-if="showPayButton || booking.can_be_cancelled" class="mt-3 space-y-2">
+        <!-- El pago es la acción urgente: la pre-reserva caduca. -->
         <button
-          @click="$emit('cancel', booking.booking_id)"
-          class="w-full py-2 text-sm text-red-600 hover:text-red-700 font-medium"
+          v-if="showPayButton"
+          class="w-full py-2 bg-accent-700 hover:bg-accent-800 text-white text-sm font-medium rounded-xl transition-colors"
+          @click="$emit('pay', booking.booking_id)"
         >
-          Cancelar reserva
+          {{ t('bookings.actions.pay') }}
+        </button>
+
+        <button
+          v-if="booking.can_be_cancelled"
+          class="w-full py-2 text-sm text-red-600 hover:text-red-700 font-medium"
+          @click="$emit('cancel', booking.booking_id)"
+        >
+          {{ t('bookings.actions.cancel') }}
         </button>
       </div>
     </div>
@@ -66,6 +76,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Booking } from '@/types'
 
 interface Props {
@@ -76,7 +87,14 @@ const props = defineProps<Props>()
 
 defineEmits<{
   cancel: [bookingId: number]
+  pay: [bookingId: number]
 }>()
+
+const { t } = useI18n()
+
+const showPayButton = computed(
+  () => props.booking.status === 'pending_payment' && Boolean(props.booking.can_be_paid)
+)
 
 const statusClasses = computed(() => {
   const classes: Record<string, string> = {
@@ -84,19 +102,15 @@ const statusClasses = computed(() => {
     confirmed: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
     completed: 'bg-blue-100 text-blue-800',
+    expired: 'bg-gray-200 text-gray-700',
+    refunded: 'bg-purple-100 text-purple-800',
   }
   return classes[props.booking.status] || 'bg-gray-100 text-gray-800'
 })
 
-const statusLabel = computed(() => {
-  const labels: Record<string, string> = {
-    pending_payment: 'Pendiente de pago',
-    confirmed: 'Confirmada',
-    cancelled: 'Cancelada',
-    completed: 'Completada',
-  }
-  return labels[props.booking.status] || props.booking.status
-})
+const statusLabel = computed(() =>
+  t(`bookings.status.${props.booking.status}`, props.booking.status)
+)
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr + 'T00:00:00')

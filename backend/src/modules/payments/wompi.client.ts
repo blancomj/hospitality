@@ -71,6 +71,35 @@ export class WompiClient {
     }) as Promise<WompiRefundResponse>;
   }
 
+  /**
+   * Firma de integridad del checkout.
+   *
+   * Wompi exige SHA256(reference + amountInCents + currency + secretoIntegridad)
+   * y rechaza la transacción si no coincide. Sin ella el widget nunca abre.
+   *
+   * Se calcula en el backend a propósito: si el monto se firmara en el
+   * navegador, cualquiera podría pagar mil pesos por una reserva de un millón.
+   */
+  buildIntegritySignature(
+    reference: string,
+    amountInCents: number,
+    currency: string
+  ): string {
+    const secret = config.wompi.integritySecret;
+    if (!secret) {
+      throw new Error(
+        'WOMPI_INTEGRITY_SECRET no está configurado: no se puede firmar el checkout.'
+      );
+    }
+
+    if (!Number.isInteger(amountInCents) || amountInCents <= 0) {
+      throw new Error(`Monto inválido para firmar: ${amountInCents}`);
+    }
+
+    const payload = `${reference}${amountInCents}${currency}${secret}`;
+    return crypto.createHash('sha256').update(payload, 'utf8').digest('hex');
+  }
+
   private resolvePath(obj: Record<string, any>, path: string): unknown {
     return path.split('.').reduce<any>(
       (acc, key) => (acc === null || acc === undefined ? undefined : acc[key]),
