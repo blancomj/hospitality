@@ -15,6 +15,7 @@ import {
   updatePlatformSettingController,
   getAuditLogController,
 } from './admin.controller.js';
+import { readSettingValue } from './admin.service.js';
 
 const router = Router();
 
@@ -37,25 +38,15 @@ router.get('/settings/public', async (_req, res) => {
   try {
     const placeholders = PUBLIC_SETTING_KEYS.map(() => '?').join(',');
     const [rows] = await pool.execute(
-      `SELECT setting_key, setting_value, value_type
+      `SELECT key_name, value_text, value_number, value_json
        FROM platform_settings
-       WHERE setting_key IN (${placeholders})`,
+       WHERE key_name IN (${placeholders})`,
       PUBLIC_SETTING_KEYS
     );
 
     const settings: Record<string, unknown> = {};
     for (const row of rows as any[]) {
-      const raw = row.setting_value;
-      settings[row.setting_key] =
-        row.value_type === 'int'
-          ? parseInt(raw, 10)
-          : row.value_type === 'decimal'
-            ? parseFloat(raw)
-            : row.value_type === 'bool'
-              ? raw === '1' || raw === 'true'
-              : row.value_type === 'json'
-                ? JSON.parse(raw)
-                : raw;
+      settings[row.key_name] = readSettingValue(row);
     }
 
     res.json({ settings });

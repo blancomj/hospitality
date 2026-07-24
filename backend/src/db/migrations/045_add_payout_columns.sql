@@ -4,5 +4,5 @@
 -- ============================================
 
 ALTER TABLE payouts
-  ADD COLUMN wompi_payout_reference VARCHAR(100) AFTER status,
-  ADD COLUMN paid_at TIMESTAMP NULL AFTER wompi_payout_reference;
+  ADD COLUMN IF NOT EXISTS wompi_payout_reference VARCHAR(100) AFTER status,
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP NULL AFTER wompi_payout_reference;

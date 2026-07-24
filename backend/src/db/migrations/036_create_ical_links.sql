@@ -40,9 +40,9 @@ BEGIN
 
     -- Procesar cada evento
     WHILE i < v_count DO
-        SET v_start_date = STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(p_events, CONCAT('$[', i, '.start']))), '%Y-%m-%d');
-        SET v_end_date = STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(p_events, CONCAT('$[', i, '.end']))), '%Y-%m-%d');
-        SET v_uid = JSON_UNQUOTE(JSON_EXTRACT(p_events, CONCAT('$[', i, '.uid]')));
+        SET v_start_date = STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(p_events, CONCAT('$[', i, '].start'))), '%Y-%m-%d');
+        SET v_end_date = STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(p_events, CONCAT('$[', i, '].end'))), '%Y-%m-%d');
+        SET v_uid = JSON_UNQUOTE(JSON_EXTRACT(p_events, CONCAT('$[', i, '].uid')));
 
         -- Bloquear cada día del evento (excluyendo el día de checkout)
         WHILE v_start_date < v_end_date DO

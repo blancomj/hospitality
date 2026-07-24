@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS properties (
   title VARCHAR(150) NOT NULL,
   description TEXT,
   city VARCHAR(100) NOT NULL,
+  country VARCHAR(100) NOT NULL DEFAULT 'Colombia',
   address VARCHAR(255),
   neighborhood VARCHAR(100),
   latitude DECIMAL(10,7),

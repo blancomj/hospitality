@@ -61,53 +61,53 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
 -- 4. Agregar columnas faltantes a properties
 -- =============================================
 ALTER TABLE properties
-  ADD COLUMN neighborhood VARCHAR(100) NULL AFTER city,
-  ADD COLUMN show_exact_location BOOLEAN NOT NULL DEFAULT FALSE AFTER longitude,
-  ADD COLUMN directions_note TEXT NULL AFTER show_exact_location,
-  ADD COLUMN area_note TEXT NULL AFTER directions_note,
-  ADD COLUMN beds SMALLINT UNSIGNED NULL AFTER bedrooms,
-  ADD COLUMN area_m2 SMALLINT UNSIGNED NULL AFTER bathrooms,
-  ADD COLUMN ical_export_token VARCHAR(64) NULL UNIQUE AFTER status;
+  ADD COLUMN IF NOT EXISTS neighborhood VARCHAR(100) NULL AFTER city,
+  ADD COLUMN IF NOT EXISTS show_exact_location BOOLEAN NOT NULL DEFAULT FALSE AFTER longitude,
+  ADD COLUMN IF NOT EXISTS directions_note TEXT NULL AFTER show_exact_location,
+  ADD COLUMN IF NOT EXISTS area_note TEXT NULL AFTER directions_note,
+  ADD COLUMN IF NOT EXISTS beds SMALLINT UNSIGNED NULL AFTER bedrooms,
+  ADD COLUMN IF NOT EXISTS area_m2 SMALLINT UNSIGNED NULL AFTER bathrooms,
+  ADD COLUMN IF NOT EXISTS ical_export_token VARCHAR(64) NULL UNIQUE AFTER status;
 
 
 -- =============================================
 -- 5. Agregar columnas faltantes a property_photos
 -- =============================================
 ALTER TABLE property_photos
-  ADD COLUMN thumbnail_url VARCHAR(500) NULL AFTER image_url,
-  ADD COLUMN sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER is_primary;
+  ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR(500) NULL AFTER image_url,
+  ADD COLUMN IF NOT EXISTS sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER is_primary;
 
 
 -- =============================================
 -- 6. Agregar columnas faltantes a property_videos
 -- =============================================
 ALTER TABLE property_videos
-  ADD COLUMN source VARCHAR(50) NULL AFTER property_id,
-  ADD COLUMN thumbnail_url VARCHAR(500) NULL AFTER video_url;
+  ADD COLUMN IF NOT EXISTS source VARCHAR(50) NULL AFTER property_id,
+  ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR(500) NULL AFTER video_url;
 
 
 -- =============================================
 -- 7. Agregar columnas faltantes a amenity_catalog
 -- =============================================
 ALTER TABLE amenity_catalog
-  ADD COLUMN category VARCHAR(50) NULL AFTER icon,
-  ADD COLUMN allows_detail BOOLEAN NOT NULL DEFAULT FALSE AFTER category,
-  ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE AFTER allows_detail,
-  ADD COLUMN sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER is_active;
+  ADD COLUMN IF NOT EXISTS category VARCHAR(50) NULL AFTER icon,
+  ADD COLUMN IF NOT EXISTS allows_detail BOOLEAN NOT NULL DEFAULT FALSE AFTER category,
+  ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE AFTER allows_detail,
+  ADD COLUMN IF NOT EXISTS sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER is_active;
 
 
 -- =============================================
 -- 8. Agregar columnas faltantes a property_amenities
 -- =============================================
 ALTER TABLE property_amenities
-  ADD COLUMN detail VARCHAR(255) NULL AFTER amenity_id;
+  ADD COLUMN IF NOT EXISTS detail VARCHAR(255) NULL AFTER amenity_id;
 
 
 -- =============================================
 -- 9. Agregar columnas faltantes a property_translations
 -- =============================================
 ALTER TABLE property_translations
-  ADD COLUMN is_auto_translated BOOLEAN NOT NULL DEFAULT FALSE AFTER description;
+  ADD COLUMN IF NOT EXISTS is_auto_translated BOOLEAN NOT NULL DEFAULT FALSE AFTER description;
 
 
 -- =============================================
@@ -238,7 +238,7 @@ SELECT
   py.gross_amount,
   py.commission_amount,
   py.net_amount,
-  hp.commission_rate,
+  hp.custom_commission_rate AS commission_rate,
   py.status AS payout_status,
   b.start_date AS check_in,
   b.end_date AS check_out,

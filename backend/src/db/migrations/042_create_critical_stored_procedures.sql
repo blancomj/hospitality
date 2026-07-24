@@ -11,6 +11,8 @@
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_upsert_firebase_user;
 
+DELIMITER //
+
 CREATE PROCEDURE sp_upsert_firebase_user(
   IN p_firebase_uid VARCHAR(64),
   IN p_email VARCHAR(255),
@@ -57,13 +59,17 @@ BEGIN
          created_at, updated_at
   FROM users
   WHERE id = v_user_id;
-END;
+END //
+
+DELIMITER ;
 
 
 -- =============================================
 -- 2. sp_get_host_calendar
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_get_host_calendar;
+
+DELIMITER //
 
 CREATE PROCEDURE sp_get_host_calendar(
   IN p_host_id BIGINT UNSIGNED,
@@ -106,13 +112,17 @@ BEGIN
   LEFT JOIN availability_overrides ao ON p.id = ao.property_id AND ao.date = cal.dt
   WHERE p.host_id = p_host_id
   ORDER BY p.id, cal.dt;
-END;
+END //
+
+DELIMITER ;
 
 
 -- =============================================
 -- 3. sp_search_properties
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_search_properties;
+
+DELIMITER //
 
 CREATE PROCEDURE sp_search_properties(
   IN p_city VARCHAR(100),
@@ -152,13 +162,17 @@ BEGIN
            HAVING COUNT(DISTINCT amenity_id) = LENGTH(p_amenities) - LENGTH(REPLACE(p_amenities, ',', '')) + 1
          ))
   ORDER BY vsp.base_price_per_night ASC;
-END;
+END //
+
+DELIMITER ;
 
 
 -- =============================================
 -- 4. sp_get_my_properties
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_get_my_properties;
+
+DELIMITER //
 
 CREATE PROCEDURE sp_get_my_properties(
   IN p_host_id BIGINT UNSIGNED
@@ -171,13 +185,17 @@ BEGIN
   FROM properties p
   WHERE p.host_id = p_host_id
   ORDER BY p.created_at DESC;
-END;
+END //
+
+DELIMITER ;
 
 
 -- =============================================
 -- 5. sp_get_host_bookings
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_get_host_bookings;
+
+DELIMITER //
 
 CREATE PROCEDURE sp_get_host_bookings(
   IN p_host_id BIGINT UNSIGNED,
@@ -204,13 +222,17 @@ BEGIN
   WHERE p.host_id = p_host_id
     AND (p_status IS NULL OR LENGTH(p_status) = 0 OR b.status = p_status)
   ORDER BY b.start_date DESC;
-END;
+END //
+
+DELIMITER ;
 
 
 -- =============================================
 -- 6. sp_get_host_finances
 -- =============================================
 DROP PROCEDURE IF EXISTS sp_get_host_finances;
+
+DELIMITER //
 
 CREATE PROCEDURE sp_get_host_finances(
   IN p_host_id BIGINT UNSIGNED,
@@ -239,4 +261,6 @@ BEGIN
     AND (p_from_date IS NULL OR py.created_at >= p_from_date)
     AND (p_to_date IS NULL OR py.created_at <= CONCAT(p_to_date, ' 23:59:59'))
   ORDER BY py.created_at DESC;
-END;
+END //
+
+DELIMITER ;

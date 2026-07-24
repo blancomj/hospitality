@@ -39,7 +39,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     if (user.role === 'host' || user.role === 'admin') {
       const [profileRows] = await pool.execute<HostProfileRow[]>(
         `SELECT legal_name, document_id, bank_name, bank_account_number, 
-                bank_account_type, commission_rate, approval_status, created_at
+                bank_account_type, custom_commission_rate AS commission_rate, approval_status, created_at
          FROM host_profiles WHERE user_id = ?`,
         [user.id]
       );

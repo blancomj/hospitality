@@ -6,6 +6,8 @@
 
 DROP PROCEDURE IF EXISTS sp_get_host_finances;
 
+DELIMITER //
+
 CREATE PROCEDURE sp_get_host_finances(
   IN p_host_id BIGINT UNSIGNED,
   IN p_from_date DATE,
@@ -31,4 +33,6 @@ BEGIN
     AND (p_from_date IS NULL OR py.created_at >= p_from_date)
     AND (p_to_date IS NULL OR py.created_at <= CONCAT(p_to_date, ' 23:59:59'))
   ORDER BY py.created_at DESC;
-END;
+END //
+
+DELIMITER ;

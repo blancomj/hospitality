@@ -4,6 +4,6 @@
 -- ============================================
 
 ALTER TABLE properties
-  ADD COLUMN property_type ENUM('apartamento', 'apartaestudio', 'casa', 'suite', 'habitacion') NOT NULL DEFAULT 'apartamento' AFTER description;
+  ADD COLUMN IF NOT EXISTS property_type ENUM('apartamento', 'apartaestudio', 'casa', 'suite', 'habitacion') NOT NULL DEFAULT 'apartamento' AFTER description;
 
-CREATE INDEX idx_properties_type ON properties(property_type);
+CREATE INDEX IF NOT EXISTS idx_properties_type ON properties(property_type);

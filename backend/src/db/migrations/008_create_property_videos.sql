@@ -6,8 +6,7 @@
 CREATE TABLE IF NOT EXISTS property_videos (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   property_id BIGINT UNSIGNED NOT NULL,
-  source ENUM('youtube','vimeo','upload') NOT NULL,
-  url VARCHAR(500) NOT NULL,
+  video_url VARCHAR(500) NOT NULL,
   thumbnail_url VARCHAR(500),
   duration_seconds SMALLINT UNSIGNED NULL,
   sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,

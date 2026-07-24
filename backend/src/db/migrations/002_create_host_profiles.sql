@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS host_profiles (
   bank_name VARCHAR(100),
   bank_account_number VARCHAR(50),
   bank_account_type ENUM('savings', 'checking'),
-  commission_rate DECIMAL(5,2) NOT NULL DEFAULT 15.00,
+  custom_commission_rate DECIMAL(5,2) NULL DEFAULT 15.00,
   approval_status ENUM('pending_approval', 'approved', 'rejected') NOT NULL DEFAULT 'pending_approval',
   approved_by BIGINT UNSIGNED,
   approved_at TIMESTAMP NULL,

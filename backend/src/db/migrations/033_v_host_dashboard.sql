@@ -1,3 +1,24 @@
+-- La tabla reviews se define en 046; se declara aquí porque esta vista la
+-- referencia. CREATE ... IF NOT EXISTS la hace inocua si ya existe.
+CREATE TABLE IF NOT EXISTS reviews (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  booking_id BIGINT UNSIGNED NOT NULL,
+  property_id BIGINT UNSIGNED NOT NULL,
+  guest_id BIGINT UNSIGNED NOT NULL,
+  rating TINYINT UNSIGNED NOT NULL,
+  comment TEXT NULL,
+  host_reply TEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_reviews_booking (booking_id),
+  KEY idx_reviews_property (property_id),
+  KEY idx_reviews_guest (guest_id),
+  CONSTRAINT fk_reviews_booking FOREIGN KEY (booking_id) REFERENCES bookings (id) ON DELETE CASCADE,
+  CONSTRAINT fk_reviews_property FOREIGN KEY (property_id) REFERENCES properties (id) ON DELETE CASCADE,
+  CONSTRAINT fk_reviews_guest FOREIGN KEY (guest_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================
 -- Migración 033: Vista v_host_dashboard
 -- CONSTRUESCALA Hospitality

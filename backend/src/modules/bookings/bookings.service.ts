@@ -115,9 +115,9 @@ export const getBookingsByProperty = async (propertyId: number): Promise<Booking
 
 export const expirePendingBookings = async (): Promise<number> => {
   const [rows] = await pool.execute(
-    'CALL sp_expire_pending_bookings()'
+    'CALL sp_expire_pending_payments()'
   );
 
   const result = rows as any;
-  return result[0][0].expired_count;
+  return result[0][0].expired_bookings;
 };

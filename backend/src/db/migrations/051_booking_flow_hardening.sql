@@ -135,13 +135,13 @@ CREATE TABLE IF NOT EXISTS refund_requests (
 -- --------------------------------------------
 -- 4. Ajustes de configuración
 -- --------------------------------------------
-INSERT INTO platform_settings (setting_key, setting_value, value_type) VALUES
-  ('max_booking_nights', '365', 'int')
+INSERT INTO platform_settings (key_name, value_number) VALUES
+  ('max_booking_nights', 365)
 ON DUPLICATE KEY UPDATE
-  setting_value = IF(CAST(setting_value AS SIGNED) <= 30, '365', setting_value);
+  value_number = IF(COALESCE(value_number, 0) <= 30, 365, value_number);
 
-INSERT IGNORE INTO platform_settings (setting_key, setting_value, value_type) VALUES
-  ('refund_requires_approval', '1', 'bool');
+INSERT IGNORE INTO platform_settings (key_name, value_number) VALUES
+  ('refund_requires_approval', 1);
 
 -- --------------------------------------------
 -- 5. sp_create_payment_intent (corregido)

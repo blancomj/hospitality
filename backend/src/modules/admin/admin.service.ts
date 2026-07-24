@@ -51,10 +51,16 @@ interface BookingTimeline {
   }>;
 }
 
+/**
+ * Fila de platform_settings. El esquema real usa columnas tipadas
+ * (value_text / value_number / value_json) en vez de un VARCHAR con
+ * discriminador: exactamente una de las tres está poblada por clave.
+ */
 interface PlatformSetting {
-  setting_key: string;
-  setting_value: string;
-  value_type: string;
+  key_name: string;
+  value_text: string | null;
+  value_number: string | null; // DECIMAL llega como string desde mysql2
+  value_json: unknown | null;
   updated_at: string;
 }
 
@@ -333,7 +339,9 @@ export async function forceCancelBooking(
 
 export async function getPlatformSettings(): Promise<PlatformSetting[]> {
   const [rows] = await pool.execute(
-    'SELECT setting_key, setting_value, value_type, updated_at FROM platform_settings ORDER BY setting_key'
+    `SELECT key_name, value_text, value_number, value_json, updated_at
+     FROM platform_settings
+     ORDER BY key_name`
   );
   return rows as PlatformSetting[];
 }
@@ -344,17 +352,24 @@ export async function updatePlatformSetting(
   adminId: number
 ): Promise<void> {
   const [currentRows] = await pool.execute(
-    'SELECT setting_value FROM platform_settings WHERE setting_key = ?',
+    'SELECT value_text, value_number, value_json FROM platform_settings WHERE key_name = ?',
     [key]
   );
   const current = (currentRows as any)[0];
   if (!current) throw new Error('Setting not found');
 
-  const oldValue = current.setting_value;
+  const oldValue = readSettingValue(current);
+
+  // La columna destino la decide la forma del valor, no un discriminador
+  // almacenado: numérico -> value_number, JSON válido -> value_json, resto
+  // -> value_text. Las otras dos se limpian para que no queden valores viejos.
+  const target = classifySettingValue(value);
 
   await pool.execute(
-    'UPDATE platform_settings SET setting_value = ?, updated_by = ? WHERE setting_key = ?',
-    [value, adminId, key]
+    `UPDATE platform_settings
+     SET value_text = ?, value_number = ?, value_json = ?
+     WHERE key_name = ?`,
+    [target.value_text, target.value_number, target.value_json, key]
   );
 
   await pool.execute(
@@ -405,4 +420,44 @@ export async function getAuditLog(
 
   const [rows] = await pool.execute(sql, params);
   return rows as AuditLogEntry[];
+}
+
+
+/** Devuelve el valor efectivo de una fila de platform_settings. */
+export function readSettingValue(row: {
+  value_text?: string | null;
+  value_number?: string | number | null;
+  value_json?: unknown;
+}): unknown {
+  if (row.value_json !== null && row.value_json !== undefined) {
+    return typeof row.value_json === 'string' ? JSON.parse(row.value_json) : row.value_json;
+  }
+  if (row.value_number !== null && row.value_number !== undefined) {
+    return Number(row.value_number);
+  }
+  return row.value_text ?? null;
+}
+
+/** Decide en qué columna tipada guardar un valor entrante. */
+export function classifySettingValue(value: string): {
+  value_text: string | null;
+  value_number: number | null;
+  value_json: string | null;
+} {
+  const trimmed = value.trim();
+
+  if (trimmed !== '' && Number.isFinite(Number(trimmed))) {
+    return { value_text: null, value_number: Number(trimmed), value_json: null };
+  }
+
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    try {
+      JSON.parse(trimmed);
+      return { value_text: null, value_number: null, value_json: trimmed };
+    } catch {
+      // No es JSON válido: se guarda como texto.
+    }
+  }
+
+  return { value_text: value, value_number: null, value_json: null };
 }

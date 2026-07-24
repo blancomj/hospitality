@@ -58,7 +58,7 @@ export async function getAllHosts(): Promise<any[]> {
       hp.legal_name,
       hp.document_id,
       hp.bank_name,
-      hp.commission_rate,
+      hp.custom_commission_rate AS commission_rate,
       hp.approval_status,
       hp.approved_at,
       hp.created_at

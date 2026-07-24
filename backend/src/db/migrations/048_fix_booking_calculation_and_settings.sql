@@ -22,16 +22,19 @@ DROP FUNCTION IF EXISTS fn_setting_int;
 
 DELIMITER //
 
-CREATE FUNCTION fn_setting_int(p_key VARCHAR(60), p_default INT)
+CREATE FUNCTION fn_setting_int(
+  p_key VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  p_default INT
+)
 RETURNS INT
 DETERMINISTIC
 READS SQL DATA
 BEGIN
   DECLARE v_value INT;
 
-  SELECT CAST(setting_value AS SIGNED) INTO v_value
+  SELECT ROUND(value_number) INTO v_value
   FROM platform_settings
-  WHERE setting_key = p_key
+  WHERE key_name = p_key AND value_number IS NOT NULL
   LIMIT 1;
 
   RETURN COALESCE(v_value, p_default);
@@ -39,16 +42,19 @@ END //
 
 DROP FUNCTION IF EXISTS fn_setting_decimal //
 
-CREATE FUNCTION fn_setting_decimal(p_key VARCHAR(60), p_default DECIMAL(10,2))
+CREATE FUNCTION fn_setting_decimal(
+  p_key VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  p_default DECIMAL(10,2)
+)
 RETURNS DECIMAL(10,2)
 DETERMINISTIC
 READS SQL DATA
 BEGIN
   DECLARE v_value DECIMAL(10,2);
 
-  SELECT CAST(setting_value AS DECIMAL(10,2)) INTO v_value
+  SELECT value_number INTO v_value
   FROM platform_settings
-  WHERE setting_key = p_key
+  WHERE key_name = p_key AND value_number IS NOT NULL
   LIMIT 1;
 
   RETURN COALESCE(v_value, p_default);
