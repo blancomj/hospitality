@@ -199,9 +199,12 @@
             <span class="font-medium">{{ hostProfileData?.bankName }}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-gray-600">{{ t('profile.pendingApproval') }}:</span>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              {{ hostProfileData?.approvalStatus === 'pending_approval' ? 'Pendiente' : 'Aprobado' }}
+            <span class="text-gray-600">{{ t('profile.approvalStatus') }}:</span>
+            <span
+              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+              :class="approvalBadgeClass"
+            >
+              {{ approvalStatusLabel }}
             </span>
           </div>
         </div>
@@ -211,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
@@ -243,6 +246,31 @@ const isUpdating = ref(false)
 const isCreatingHost = ref(false)
 const hostProfileData = ref<HostProfile | null>(null)
 
+// El enum de aprobación tiene tres estados: pending_approval | approved |
+// rejected. Antes se mostraba "Aprobado" para todo lo distinto de pendiente,
+// lo que etiquetaba un perfil rechazado como aprobado.
+const approvalStatusLabel = computed(() => {
+  switch (hostProfileData.value?.approvalStatus) {
+    case 'approved':
+      return t('profile.statusApproved')
+    case 'rejected':
+      return t('profile.statusRejected')
+    default:
+      return t('profile.statusPending')
+  }
+})
+
+const approvalBadgeClass = computed(() => {
+  switch (hostProfileData.value?.approvalStatus) {
+    case 'approved':
+      return 'bg-green-100 text-green-800'
+    case 'rejected':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-yellow-100 text-yellow-800'
+  }
+})
+
 const handleUpdateProfile = async () => {
   try {
     isUpdating.value = true
@@ -261,6 +289,14 @@ const handleBecomeHost = async () => {
     await authStore.becomeHost(hostForm)
     toast.success('Perfil de propietario creado. Pendiente de aprobación.')
     showHostForm.value = false
+    // El rol ya cambió a 'host' en el store; recargamos el perfil para poblar
+    // la tarjeta de propietario sin necesidad de refrescar la página.
+    try {
+      const response = await api.get('/users/me')
+      hostProfileData.value = response.data.hostProfile
+    } catch (error) {
+      console.error('Error cargando perfil de propietario:', error)
+    }
   } catch (error: any) {
     toast.error(error.message || 'Error al crear perfil de propietario')
   } finally {

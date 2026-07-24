@@ -40,7 +40,7 @@ const publicRoutes: RouteRecordRaw[] = [
     path: 'favorites',
     name: 'favorites',
     component: () => import('@/features/favorites/FavoritesView.vue'),
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true },
   },
   {
     path: 'bookings',

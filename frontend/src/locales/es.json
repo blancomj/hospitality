@@ -93,6 +93,10 @@
     "savings": "Ahorros",
     "checking": "Corriente",
     "pendingApproval": "Pendiente de aprobación",
+    "approvalStatus": "Estado de aprobación",
+    "statusPending": "Pendiente",
+    "statusApproved": "Aprobado",
+    "statusRejected": "Rechazado",
     "profileUpdated": "Perfil actualizado correctamente"
   },
   "home": {

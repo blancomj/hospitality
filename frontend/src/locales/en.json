@@ -93,6 +93,10 @@
     "savings": "Savings",
     "checking": "Checking",
     "pendingApproval": "Pending approval",
+    "approvalStatus": "Approval status",
+    "statusPending": "Pending",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
     "profileUpdated": "Profile updated successfully"
   },
   "home": {

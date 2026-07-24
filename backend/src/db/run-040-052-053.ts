@@ -18,7 +18,7 @@ const DB_CONFIG = {
   database: 'u434343788_escala',
 };
 
-const MIGRATIONS = ['054_reviews_cycle.sql'];
+const MIGRATIONS = ['055_fix_admin_kpis_and_payout_hold.sql'];
 
 async function run() {
   // __dirname at runtime = dist/db, so src/db/migrations is two levels up + src/db/migrations
